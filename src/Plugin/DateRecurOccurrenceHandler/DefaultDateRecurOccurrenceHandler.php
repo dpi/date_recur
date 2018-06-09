@@ -101,7 +101,10 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   public function init(DateRecurItem $item) {
     $this->item = $item;
     if (!empty($item->rrule)) {
-      $this->rruleObject = new DateRecurRRule($item->rrule, $item->start_date, $item->end_date, $item->timezone);
+      $timezone = new \DateTimeZone($item->timezone);
+      $item->start_date->setTimezone($timezone);
+      $item->end_date->setTimezone($timezone);
+      $this->rruleObject = new DateRecurRRule($item->rrule, $item->start_date, $item->end_date);
       $this->isRecurring = TRUE;
     }
     else {
