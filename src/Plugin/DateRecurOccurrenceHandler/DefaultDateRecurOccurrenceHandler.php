@@ -15,7 +15,6 @@ use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Database\Driver\mysql\Connection;
-use Drupal\field\FieldStorageConfigInterface;
 use Zend\Stdlib\Exception\InvalidArgumentException;
 
 /**
@@ -274,21 +273,21 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   /**
    * {@inheritdoc}
    */
-  public function onFieldCreate(FieldStorageConfigInterface $field) {
+  public function onFieldCreate(FieldStorageDefinitionInterface $field) {
     $this->createOccurrenceTable($field);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function onFieldUpdate(FieldStorageConfigInterface $field) {
+  public function onFieldUpdate(FieldStorageDefinitionInterface $field) {
     // Nothing to do.
   }
 
   /**
    * {@inheritdoc}
    */
-  public function onFieldDelete(FieldStorageConfigInterface $field) {
+  public function onFieldDelete(FieldStorageDefinitionInterface $field) {
     $this->dropOccurrenceTable($field);
   }
 
@@ -304,7 +303,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
     $schema->createTable($table_name, $spec);
   }
 
-  protected function dropOccurrenceTable(FieldStorageConfigInterface $field) {
+  protected function dropOccurrenceTable(FieldStorageDefinitionInterface $field) {
     $table_name = $this->getOccurrenceTableName($field);
     $schema = $this->database->schema();
     $schema->dropTable($table_name);
@@ -357,7 +356,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   /**
    * {@inheritdoc}
    */
-  public function viewsData(FieldStorageConfigInterface $field_storage, $data) {
+  public function viewsData(FieldStorageDefinitionInterface $field_storage, $data) {
     if (empty($data)) {
       return [];
     }

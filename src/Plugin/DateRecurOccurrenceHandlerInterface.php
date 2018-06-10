@@ -6,7 +6,6 @@ use Drupal\Component\Plugin\PluginInspectionInterface;
 use Drupal\Core\TypedData\DataDefinitionInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
-use Drupal\field\FieldStorageConfigInterface;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 
 /**
@@ -96,20 +95,20 @@ interface DateRecurOccurrenceHandlerInterface extends PluginInspectionInterface 
    */
   public function onDeleteRevision();
 
-  public function onFieldCreate(FieldStorageConfigInterface $field);
+  public function onFieldCreate(FieldStorageDefinitionInterface $field);
 
-  public function onFieldUpdate(FieldStorageConfigInterface $field);
+  public function onFieldUpdate(FieldStorageDefinitionInterface $field);
 
-  public function onFieldDelete(FieldStorageConfigInterface $field);
+  public function onFieldDelete(FieldStorageDefinitionInterface $field);
 
   /**
    * Modify field views data to include occurrences.
    *
-   * @param \Drupal\field\FieldStorageConfigInterface $field_storage
+   * @param \Drupal\field\FieldStorageDefinitionInterface $field_storage
    * @param array $data
    * @return array The views data.
    */
-  public function viewsData(FieldStorageConfigInterface $field_storage, $data);
+  public function viewsData(FieldStorageDefinitionInterface $field_storage, $data);
 
   /**
    * @param \Drupal\Core\Field\FieldStorageDefinitionInterface $field_definition

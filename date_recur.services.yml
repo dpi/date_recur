@@ -2,3 +2,9 @@ services:
   plugin.manager.date_recur_occurrence_handler:
     class: Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerManager
     parent: default_plugin_manager
+
+  date_recur.entity_schema_subscriber:
+    class: Drupal\date_recur\EventSubscriber\DateRecurEntitySchemaSubscriber
+    arguments: ['@entity_field.manager', '@plugin.manager.date_recur_occurrence_handler']
+    tags:
+      - { name: 'event_subscriber' }
