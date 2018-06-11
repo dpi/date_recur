@@ -7,6 +7,7 @@
 
 use Drupal\Core\Routing\RouteMatchInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\field\FieldConfigInterface;
 use Drupal\field\FieldStorageConfigInterface;
 use Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface;
@@ -50,9 +51,6 @@ function date_recur_theme($existing, $type, $theme, $path) {
  * @return DateRecurOccurrenceHandlerInterface
  */
 function date_recur_create_occurrence_handler($field) {
-  if ($field->getType() != 'date_recur') {
-    throw new InvalidArgumentException("Expected field of type date_recur.");
-  }
   $pluginName = $field->getSetting('occurrence_handler_plugin');
   /** @var DateRecurOccurrenceHandlerManager $manager */
   $manager = \Drupal::getContainer()
@@ -64,7 +62,12 @@ function date_recur_create_occurrence_handler($field) {
  * Implements hook_ENTITY_TYPE_insert() for 'field_config'.
  */
 function date_recur_field_storage_config_insert(FieldStorageConfigInterface $field) {
-  if ($field->getType() == 'date_recur') {
+  /** @var \Drupal\field\Entity\FieldStorageConfig $k */
+  $type_definition = \Drupal::typedDataManager()
+    ->getDefinition('field_item:' . $field->getType());
+  $class = $type_definition['class'];
+  // Is date_recur or a subclass.
+  if (($class == DateRecurItem::class) || (new ReflectionClass($class))->isSubclassOf(DateRecurItem::class)) {
     $plugin = date_recur_create_occurrence_handler($field);
     $plugin->onFieldCreate($field);
   }
@@ -72,7 +75,11 @@ function date_recur_field_storage_config_insert(FieldStorageConfigInterface $fie
 
 
 function date_recur_field_storage_config_update(FieldStorageConfigInterface $field) {
-  if ($field->getType() == 'date_recur') {
+  $type_definition = \Drupal::typedDataManager()
+    ->getDefinition('field_item:' . $field->getType());
+  $class = $type_definition['class'];
+  // Is date_recur or a subclass.
+  if (($class == DateRecurItem::class) || (new ReflectionClass($class))->isSubclassOf(DateRecurItem::class)) {
     $plugin = date_recur_create_occurrence_handler($field);
     $plugin->onFieldUpdate($field);
   }
@@ -82,7 +89,11 @@ function date_recur_field_storage_config_update(FieldStorageConfigInterface $fie
  * Implements hook_ENTITY_TYPE_delete() for 'field_config'.
  */
 function date_recur_field_storage_config_delete(FieldStorageConfigInterface $field) {
-  if ($field->getType() == 'date_recur') {
+  $type_definition = \Drupal::typedDataManager()
+    ->getDefinition('field_item:' . $field->getType());
+  $class = $type_definition['class'];
+  // Is date_recur or a subclass.
+  if (($class == DateRecurItem::class) || (new ReflectionClass($class))->isSubclassOf(DateRecurItem::class)) {
     $plugin = date_recur_create_occurrence_handler($field);
     $plugin->onFieldDelete($field);
   }
