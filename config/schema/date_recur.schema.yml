@@ -1,0 +1,19 @@
+field.value.date_recur:
+  type: mapping
+  label: 'Default value'
+  mapping:
+    default_date_type:
+      type: string
+      label: 'Default start date type'
+    default_date:
+      type: string
+      label: 'Default start date value'
+    default_end_date_type:
+      type: string
+      label: 'Default end date type'
+    default_end_date:
+      type: string
+      label: 'Default end date value'
+    default_rrule:
+      type: string
+      label: 'Default RRULE'

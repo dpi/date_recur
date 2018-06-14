@@ -147,7 +147,8 @@ class DateRecurItem extends DateRangeItem {
    * {@inheritdoc}
    */
   public function isEmpty() {
-    return parent::isEmpty();
+    $rrule = $this->get('rrule')->getValue();
+    return parent::isEmpty() && ($rrule === NULL || $rrule === '');
   }
 
   /**
