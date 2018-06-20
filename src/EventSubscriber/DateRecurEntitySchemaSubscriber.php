@@ -2,6 +2,7 @@
 
 namespace Drupal\date_recur\EventSubscriber;
 
+use Drupal\Core\Entity\ContentEntityType;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Entity\EntityTypeEventSubscriberTrait;
 use Drupal\Core\Entity\EntityTypeInterface;
@@ -48,6 +49,11 @@ class DateRecurEntitySchemaSubscriber implements EntityTypeListenerInterface, Ev
    * {@inheritdoc}
    */
   public function onEntityTypeCreate(EntityTypeInterface $entity_type) {
+    if (!$entity_type instanceof ContentEntityType) {
+      // Only add field for content entity types.
+      return;
+    }
+
     $baseFields = $this->entityFieldManager->getBaseFieldDefinitions($entity_type->id());
     $baseFields = array_filter($baseFields, function (FieldDefinitionInterface $fieldDefinition) {
       return 'date_recur' === $fieldDefinition->getType();
