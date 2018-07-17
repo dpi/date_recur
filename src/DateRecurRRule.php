@@ -273,12 +273,22 @@ class DateRecurRRule implements \Iterator {
     $occurrences = [];
     foreach ($this->rrule as $occurrence) {
       /** @var \DateTime $occurrence */
-      if ($start && $occurrence < $start) {
-        continue;
+      // Allow the occurrence if it is partially within the duration of the
+      // range.
+      $dateEnd = (clone $occurrence)->add($this->recurDiff);
+
+      if ($start) {
+        if ($occurrence < $start && $dateEnd < $start) {
+          continue;
+        }
       }
-      if ($end && $occurrence > $end) {
-        break;
+
+      if ($end) {
+        if ($occurrence > $end && $dateEnd > $end) {
+          break;
+        }
       }
+
       if ($num && count($occurrences)  >= $num) {
         break;
       }
