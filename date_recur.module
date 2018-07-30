@@ -80,3 +80,15 @@ function date_recur_field_storage_config_delete(FieldStorageConfigInterface $fie
   $entityHooks = \Drupal::service('date_recur.entity_hooks');
   $entityHooks->fieldStorageConfigDelete($fieldStorage);
 }
+
+/**
+ * Implements hook_field_formatter_info_alter().
+ */
+function date_recur_field_formatter_info_alter(array &$info): void {
+  // Duplicate daterange_default formatters for date_recur field.
+  foreach ($info as $formatterId => $formatterInfo) {
+    if (in_array('daterange', $formatterInfo['field_types'])) {
+      $info[$formatterId]['field_types'][] = 'date_recur';
+    }
+  }
+}

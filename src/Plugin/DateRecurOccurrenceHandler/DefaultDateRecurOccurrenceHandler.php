@@ -14,6 +14,7 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\date_recur\Plugin\views\field\DateRecurFieldSimpleRender;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Zend\Stdlib\Exception\InvalidArgumentException;
 
@@ -103,7 +104,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
     else {
       $this->isRecurring = FALSE;
     }
-    $this->tableName = $this->getOccurrenceTableName($this->item->getFieldDefinition());
+    $this->tableName = $this->getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
   }
 
   /**
@@ -218,18 +219,16 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   }
 
   /**
-   * @param FieldStorageDefinitionInterface|FieldDefinitionInterface $field
-   * @throws InvalidArgumentException
+   * Get the name of the table containing occurrences for a field.
+   *
+   * @param \Drupal\Core\Field\FieldStorageDefinitionInterface $fieldDefinition
+   *   The field definition.
+   *
    * @return string
+   *   A table name.
    */
-  protected function getOccurrenceTableName($field) {
-    if (! ($field instanceof FieldStorageDefinitionInterface || $field instanceof FieldDefinitionInterface)) {
-      throw new InvalidArgumentException();
-    }
-    $entity_type = $field->getTargetEntityTypeId();
-    $field_name = $field->getName();
-    $table_name = 'date_recur__' . $entity_type . '__' . $field_name;
-    return $table_name;
+  public static function getOccurrenceCacheStorageTableName(FieldStorageDefinitionInterface $fieldDefinition) {
+    return sprintf('date_recur__%s__%s', $fieldDefinition->getTargetEntityTypeId(), $fieldDefinition->getName());
   }
 
   /**
@@ -247,7 +246,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
    * {@inheritdoc}
    */
   public function onDelete() {
-    $table_name = $this->getOccurrenceTableName($this->item->getFieldDefinition());
+    $table_name = $this->getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
     $q = $this->database->delete($table_name);
     $q->condition('entity_id', $this->item->getEntity()->id());
     $q->execute();
@@ -257,7 +256,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
    * {@inheritdoc}
    */
   public function onDeleteRevision() {
-    $table_name = $this->getOccurrenceTableName($this->item->getFieldDefinition());
+    $table_name = $this->getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
     $q = $this->database->delete($table_name);
     $q->condition('entity_id', $this->item->getEntity()->id());
     $q->condition('revision_id', $this->item->getEntity()->getRevisionId());
@@ -294,7 +293,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   protected function createOccurrenceTable(FieldStorageDefinitionInterface $fieldDefinition) {
     $entity_type = $fieldDefinition->getTargetEntityTypeId();
     $field_name = $fieldDefinition->getName();
-    $table_name = $this->getOccurrenceTableName($fieldDefinition);
+    $table_name = $this->getOccurrenceCacheStorageTableName($fieldDefinition);
 
     $spec = $this->getOccurrenceTableSchema($fieldDefinition);
     $spec['description'] = 'Date recur cache for ' . $entity_type . '.' . $field_name;
@@ -309,7 +308,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
    *   The field definition.
    */
   protected function dropOccurrenceTable(FieldStorageDefinitionInterface $fieldDefinition) {
-    $tableName = $this->getOccurrenceTableName($fieldDefinition);
+    $tableName = $this->getOccurrenceCacheStorageTableName($fieldDefinition);
     $schema = $this->database->schema();
     $schema->dropTable($tableName);
   }
@@ -370,11 +369,20 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
 
     // @todo: Revision support.
     unset($data[$revision_table_alias]);
-    $recur_table_name = $this->getOccurrenceTableName($fieldDefinition);
-
+    $recur_table_name = $this->getOccurrenceCacheStorageTableName($fieldDefinition);
 
     $field_table = $data[$table_alias];
     $recur_table = $field_table;
+//    $field_table = [];
+//    $recur_table = [];
+//    foreach ($data[$table_alias] as $columnName => $columnData) {
+//      if (!$this->viewsDataCheckIfMoveColumnName($field_name, $columnName)) {
+//        $field_table[$columnName] = $columnData;
+//      }
+//      else {
+//        $recur_table[$columnName] = $columnData;
+//      }
+//    }
 
     $join_key = array_keys($field_table['table']['join'])[0];
     $recur_table['table']['join'] = $field_table['table']['join'];
@@ -387,13 +395,18 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
       if ($column_name == 'table') {
         continue;
       }
-      if (!$this->viewsDataCheckIfMoveColumnName($field_name, $column_name, $column_data)) {
+      if (!$this->viewsDataCheckIfMoveColumnName($field_name, $column_name)) {
         unset($recur_table[$column_name]);
       }
       else {
         unset($field_table[$column_name]);
+        $column_data['group'] = $this->t('Date occurrences');
+        $column_data['title'] = (string) $column_data['title'];
         foreach ($handler_keys as $key) {
           if (!empty($column_data[$key]['table'])) {
+            if ($key=='field') {
+              $k = 1;
+            }
             $column_data[$key]['table'] = $recur_table_name;
             $column_data[$key]['additional fields'] = [
               $field_name . '_value',
@@ -403,22 +416,24 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
             ];
           }
         }
-        if ($column_name == $field_name . '_value') {
-          $column_data['field']['click sortable'] = TRUE;
-        }
       }
     }
 
     $custom_handler_name = $field_name . '_simple_render';
     $recur_table[$custom_handler_name] = $recur_table[$field_name];
-    $recur_table[$custom_handler_name]['title'] .= $this->t(' (simple render)');
-    $recur_table[$custom_handler_name]['field']['id'] = 'date_recur_field_simple_render';
+    $recur_table[$custom_handler_name]['title'] = $this->t('@field_name (simple render)', [
+      '@field_name' => (string) $recur_table[$custom_handler_name]['title'],
+    ]);
+    $recur_table[$custom_handler_name]['field']['id'] = DateRecurFieldSimpleRender::PLUGIN_ID;
 
     $return_data = [$recur_table_name => $recur_table, $table_alias => $field_table];
     return $return_data;
   }
 
-  protected function viewsDataCheckIfMoveColumnName($fieldName, $columnName, $columnData) {
+  /**
+   * Check if column should from the original field table to cache table.
+   */
+  protected function viewsDataCheckIfMoveColumnName($fieldName, $columnName) {
     $fieldsToMove = [
       $fieldName,
       $fieldName . '_value',

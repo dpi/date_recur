@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\date_recur\Kernel;
 
+use Drupal\date_recur\Plugin\DateRecurOccurrenceHandler\DefaultDateRecurOccurrenceHandler;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\entity_test\Entity\EntityTest;
 use Drupal\field\Entity\FieldConfig;
@@ -130,6 +131,19 @@ class DateRecurOccurrenceTableTest extends KernelTestBase {
     // Make sure more than zero rows created.
     $this->assertGreaterThan(0, $actualCount);
     $this->assertEquals($count, $actualCount);
+  }
+
+  /**
+   * Test table name generator.
+   */
+  public function testGetOccurrenceCacheStorageTableName() {
+    $fieldStorage = FieldStorageConfig::create([
+      'entity_type' => 'entity_test',
+      'field_name' => 'foo',
+      'type' => 'date_recur',
+    ]);
+    $actual = DefaultDateRecurOccurrenceHandler::getOccurrenceCacheStorageTableName($fieldStorage);
+    $this->assertEquals('date_recur__entity_test__foo', $actual);
   }
 
 }

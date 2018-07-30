@@ -18,6 +18,11 @@ use Drupal\views\ResultRow;
 class DateRecurFieldSimpleRender extends EntityField {
 
   /**
+   * The plugin ID.
+   */
+  public const PLUGIN_ID = 'date_recur_field_simple_render';
+
+  /**
    * @var EntityViewDisplay The entity display.
    */
   protected $display;
@@ -65,6 +70,9 @@ class DateRecurFieldSimpleRender extends EntityField {
    */
   public function render(ResultRow $values) {
     $entity = $this->getEntity($values);
+    if (!$entity) {
+      return [];
+    }
 
     if (empty($this->display)) {
       $this->display = EntityViewDisplay::create([
@@ -87,6 +95,10 @@ class DateRecurFieldSimpleRender extends EntityField {
   public function getEntity(ResultRow $values) {
     $entity = parent::getEntity($values);
     $field_name = $this->definition['field_name'];
+    if (!$entity->{$field_name}) {
+      return FALSE;
+    }
+
     $item = $entity->{$field_name}->first();
     $item->value = $values->{$this->field_alias};
     if (!empty($this->aliases[$field_name . '_end_value'])) {
