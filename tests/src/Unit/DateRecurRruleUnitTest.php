@@ -6,6 +6,7 @@ use Drupal\Core\DependencyInjection\ContainerBuilder;
 use Drupal\Core\Language\Language;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\date_recur\DateRecurRRule;
+use Drupal\date_recur\DateRecurUtility;
 use Drupal\Tests\UnitTestCase;
 
 /**
@@ -58,7 +59,7 @@ class DateRecurRruleUnitTest extends UnitTestCase {
 
     // The first result must be the same as the first day.
     // \DateTime objects are comparable in PHP.
-    $this->assertTrue($start == $results[0]["value"]);
+    $this->assertTrue($start == DateRecurUtility::toPhpDateTime($results[0]["value"]));
   }
 
   /**
