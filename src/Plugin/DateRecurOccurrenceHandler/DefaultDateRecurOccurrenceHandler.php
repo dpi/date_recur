@@ -496,4 +496,16 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
       $this->rruleObject->rewind();
     }
   }
+
+  /**
+   * Obj.
+   *
+   * @return \Drupal\date_recur\DateRecurRRule
+   *   Obj
+   * @todo remove
+   */
+  public function getRruleObject() {
+    return $this->rruleObject;
+  }
+
 }

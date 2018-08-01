@@ -169,15 +169,16 @@ class DateRecurItem extends DateRangeItem {
   /**
    * Get the occurrence handler and initialize it.
    *
-   * @return DateRecurOccurrenceHandlerInterface|bool
+   * @return \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface|\Drupal\date_recur\Plugin\DateRecurOccurrenceHandler\DefaultDateRecurOccurrenceHandler
+   *   An occurrence handler
+   *
+   * @throws \Exception
+   *   Throws exceptions.
    */
   public function getOccurrenceHandler() {
     if (empty($this->occurrenceHandler)) {
       $pluginName = $this->getSetting('occurrence_handler_plugin');
-      /** @var DateRecurOccurrenceHandlerManager $manager */
-      $manager = \Drupal::getContainer()
-        ->get('plugin.manager.date_recur_occurrence_handler');
-      /** @var DateRecurOccurrenceHandlerInterface $occurrenceHandler */
+      $manager = \Drupal::service('plugin.manager.date_recur_occurrence_handler');
       $this->occurrenceHandler = $manager->createInstance($pluginName);
       $this->occurrenceHandler->init($this);
     }

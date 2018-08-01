@@ -15,77 +15,74 @@ namespace Drupal\date_recur;
  */
 
 use Drupal\Core\Datetime\DrupalDateTime;
-use Drupal\Component\Datetime\DateTimePlus;
 use RRule\RRule;
 use RRule\RfcParser;
-use RRule\RSet;
 
-
+/**
+ * Defines the DateRecurRRule class.
+ */
 class DateRecurRRule implements \Iterator {
 
-  const RFC_DATE_FORMAT = 'Ymd\THis\Z';
-
   /**
-   * @var \RRule\RRule
+   * The RRULE object.
+   *
+   * @var \Drupal\date_recur\DateRecurDefaultRSet
    */
   protected $rrule;
 
   /**
+   * The initial occurrence start date.
+   *
    * @var \DateTime
    */
   protected $startDate;
+
+  /**
+   * The initial occurrence end date.
+   *
+   * @var \DateTime
+   */
   protected $startDateEnd;
 
   /**
-   * @var string
-   */
-  protected $recurTime;
-
-  /**
+   * Difference between start date and start date end.
+   *
+   * Calculated value.
+   *
    * @var \DateInterval
    */
   protected $recurDiff;
 
   /**
-   * @var string
-   */
-  protected $originalRuleString;
-
-  /**
+   * Parts.
+   *
    * @var array
    */
   protected $parts;
 
   /**
+   * Set parts.
+   *
    * @var array
    */
   protected $setParts;
 
   /**
-   * @var array
+   * Construct a new DateRecurRRule.
+   *
+   * @param string $rrule
+   *   The repeat rule.
+   * @param \DateTime $startDate
+   *   The initial occurrence start date.
+   * @param \DateTime|null $startDateEnd
+   *   The initial occurrence end date.
    */
-  protected $occurrences;
-
-  protected $timezone;
-  protected $timezoneOffset;
-
-  /**
-   * @param string $rrule The repeat rule.
-   * @param \DateTime|DrupalDateTime $startDate The start date (DTSTART).
-   * @param \DateTime|DrupalDateTime|NULL $startDateEnd Optionally, the initial event's end date.
-   * @throws \InvalidArgumentException
-   */
-  public function __construct($rrule, $startDate, $startDateEnd = NULL, $timezone = NULL) {
-    $this->originalRuleString = $rrule;
+  public function __construct($rrule, \DateTime $startDate, \DateTime $startDateEnd) {
     $this->startDate = $startDate;
-    $this->recurTime = $this->startDate->format('H:i');
-    if (empty($startDateEnd)) {
-      $startDateEnd = clone $startDate;
-    }
     $this->startDateEnd = $startDateEnd;
     $this->recurDiff = $this->startDate->diff($startDateEnd);
 
-    $this::parseRrule($rrule, $startDate);
+    $this->parseRrule($rrule, $startDate);
 
     $this->rrule = new DateRecurDefaultRSet();
     $this->rrule->addRRule(new DateRecurDefaultRRule($this->parts));
@@ -97,30 +94,17 @@ class DateRecurRRule implements \Iterator {
             case 'RDATE':
               $this->rrule->addDate($part);
               break;
+
             case 'EXDATE':
               $this->rrule->addExDate($part);
               break;
+
             case 'EXRULE':
               $this->rrule->addExRule($part);
           }
         }
       }
     }
-
-    if ($timezone) {
-      $this->timezone = $timezone;
-      $start = clone $this->startDate;
-      $start->setTimezone(new \DateTimeZone($this->timezone));
-      $this->timezoneOffset = $start->getOffset();
-      $this->rrule->setTimezoneOffset($this->timezoneOffset);
-    }
-  }
-
-  public function getTimezoneOffset() {
-    if (!empty($this->timezoneOffset)) {
-      return $this->timezoneOffset;
-    }
-    return FALSE;
   }
 
   public function getParts() {
@@ -131,16 +115,18 @@ class DateRecurRRule implements \Iterator {
    * Parse an RFC rrule string and add a start date (DTSTART).
    *
    * @param string $rrule
-   * @param \DateTime|DrupalDateTime $startDate
+   *   The repeat rule.
+   * @param \DateTime $startDate
+   *   The initial occurrence start date.
+   *
    * @throws \InvalidArgumentException
-   * @return array An array of rrule parts.
+   *   If the RRULE is malformed.
    */
-  public function parseRrule($rrule, $startDate, $check_only = FALSE) {
+  public function parseRrule($rrule, \DateTime $startDate) {
     // Correct formatting.
     if (strpos($rrule, "\n") === FALSE && strpos($rrule, 'RRULE:') !== 0) {
       $rrule = "RRULE:$rrule";
     }
-    $dtstart = 'DTSTART:' . $startDate->format(self::RFC_DATE_FORMAT);
 
     // Check for unsupported parts.
     $set_keys = ['RDATE', 'EXRULE', 'EXDATE'];
@@ -150,11 +136,10 @@ class DateRecurRRule implements \Iterator {
       if (in_array($els[0], $set_keys)) {
         $set_parts[$els[0]][] = $part;
       }
-      else if ($els[0] == 'RRULE') {
+      elseif ($els[0] == 'RRULE') {
         $rules[] = $part;
       }
-      else if ($els[0] == 'DTSTART') {
-        $dtstart = $part;
+      elseif ($els[0] == 'DTSTART') {
       }
       else {
         throw new \InvalidArgumentException("Unsupported line: " . $part);
@@ -167,12 +152,13 @@ class DateRecurRRule implements \Iterator {
     if (count($rules) > 1) {
       throw new \InvalidArgumentException("More than one RRULE line is not supported.");
     }
-    $rrule = $dtstart . "\n" . $rules[0];
+
+    $rrule = $rules[0];
 
     if (empty($parts['WKST'])) {
       $parts['WKST'] = 'MO';
     }
-    $this->parts = RfcParser::parseRRule($rrule);
+    $this->parts = RfcParser::parseRRule($rrule, $startDate);
     $this->setParts = $set_parts;
   }
 
@@ -264,50 +250,153 @@ class DateRecurRRule implements \Iterator {
   }
 
   /**
-   * @param null|\DateTime $start
-   * @param null|\DateTime $end
-   * @param null|int $num
+   * Get occurrences between a range of dates.
+   *
+   * @param \DateTime|null $start
+   *   The start of the range.
+   * @param \DateTime|null $end
+   *   The end of the range.
+   * @param int|null $num
+   *   Maximum number of occurrences.
+   *
    * @return array
+   *   An array containing arrays of:
+   *    - value: the start date as DrupalDateTime.
+   *    - end_value: the end date as DrupalDateTime.
    */
-  protected function createOccurrences($start = NULL, $end = NULL, $num = NULL, $display = TRUE) {
-    if ($this->rrule->isInfinite() && $end === NULL && $num === NULL) {
+  protected function createOccurrences(\DateTime $start = NULL, \DateTime $end = NULL, $num = NULL) {
+    if ($this->rrule->isInfinite() && !$end && !$num) {
       throw new \LogicException('Cannot get all occurrences of an infinite recurrence rule.');
     }
 
     $occurrences = [];
     foreach ($this->rrule as $occurrence) {
-      if ($start !== NULL && $occurrence < $start) {
-        continue;
+      /** @var \DateTime $occurrence */
+      // Allow the occurrence if it is partially within the duration of the
+      // range.
+      $dateEnd = (clone $occurrence)->add($this->recurDiff);
+
+      if ($start) {
+        if ($occurrence < $start && $dateEnd < $start) {
+          continue;
+        }
       }
-      if ($end !== NULL && $occurrence > $end) {
+
+      if ($end) {
+        if ($occurrence > $end && $dateEnd > $end) {
+          break;
+        }
+      }
+
+      if ($num && count($occurrences) >= $num) {
         break;
       }
-      if ($num !== NULL && count($occurrences)  >= $num) {
-        break;
-      }
-      $occurrences[] = $this->massageOccurrence($occurrence, $display);
+      $occurrences[] = $this->massageOccurrence($occurrence);
     }
 
     return $occurrences;
   }
 
   /**
-   * @param \DateTime $occurrence
-   * @param bool|TRUE $display
-   * @return array[[value => DrupalDateTime, end_value => DrupalDateTime], ...]
+   * Calculates occurrences as a generator.
+   *
+   * @param \DateTime|null $rangeStart
+   *   The start of the range, or start with the first available occurrence.
+   * @param \DateTime|null $rangeEnd
+   *   The end of the range, or never end.
+   *
+   * @return \Generator|\Drupal\date_recur\DateRange[]
+   *   A generator.
    */
-  protected function massageOccurrence(\DateTime $occurrence, $display = TRUE) {
-    /** @var DateTimePlus $date */
-    $date = DrupalDateTime::createFromFormat('Ymd H:i', $occurrence->format('Ymd') . ' ' . $this->recurTime, $this->startDate->getTimezone());
-    if ($display) {
-      $date = $this->adjustDateForDisplay($date);
+  public function generateOccurrences(\Datetime $rangeStart = NULL, \Datetime $rangeEnd = NULL) {
+    foreach ($this->rrule as $occurrenceStart) {
+      /** @var \DateTime $occurrence */
+      $occurrenceEnd = (clone $occurrenceStart)->add($this->recurDiff);
+
+      if ($rangeStart) {
+        if ($occurrenceStart < $rangeStart && $occurrenceEnd < $rangeStart) {
+          continue;
+        }
+      }
+
+      if ($rangeEnd) {
+        if ($occurrenceStart > $rangeEnd && $occurrenceEnd > $rangeEnd) {
+          break;
+        }
+      }
+
+      yield new DateRange($occurrenceStart, $occurrenceEnd);
     }
 
-    $date_end = clone $date;
-    if (!empty($this->recurDiff)) {
-      $date_end = $date_end->add($this->recurDiff);
+    return NULL;
+  }
+
+  /**
+   * Get all occurrences.
+   *
+   * A limit and/or range-end must be passed.
+   *
+   * @param \DateTime|null $rangeStart
+   *   The start of the range, or start with the first available occurrence.
+   * @param \DateTime|null $rangeEnd
+   *   The end of the range.
+   * @param int|null $limit
+   *   A limit.
+   *
+   * @return \Drupal\date_recur\DateRange[]
+   *   The occurrences.
+   *
+   * @throws \InvalidArgumentException
+   *   Exceptions thrown if ranges are invalid or undefined.
+   */
+  public function getAllOccurrences(\Datetime $rangeStart = NULL, \Datetime $rangeEnd = NULL, $limit = NULL) {
+    // @todo rename to getOccurrences.
+    if ($this->isInfinite() && !isset($rangeEnd) && !isset($limit)) {
+      throw new \InvalidArgumentException('An infinite rule must have a date or count limit.');
     }
-    return ['value' => $date, 'end_value' => $date_end];
+
+    $generator = $this->generateOccurrences($rangeStart, $rangeEnd);
+    if (isset($limit)) {
+      if (!is_int($limit) || $limit <= 0) {
+        // Limit must be a number and more than one.
+        throw new \InvalidArgumentException('Invalid count limit.');
+      }
+
+      // Generate occurrences until the limit is reached.
+      $occurrences = [];
+      foreach ($generator as $value) {
+        $occurrences[] = $value;
+        if (count($occurrences) >= $limit) {
+          break;
+        }
+      }
+      return $occurrences;
+    }
+
+    return iterator_to_array($generator);
+  }
+
+  /**
+   * Create a start and end range from an occurrence.
+   *
+   * @param \DateTime $occurrence
+   *   An occurrence start time.
+   *
+   * @return array
+   *   An array containing:
+   *    - value: the start date as DrupalDateTime.
+   *    - end_value: the end date as DrupalDateTime.
+   *
+   * @deprecated Will be removed before beta.
+   * @internal
+   */
+  protected function massageOccurrence(\DateTime $occurrence) {
+    $date = DrupalDateTime::createFromDateTime($occurrence);
+    $dateEnd = (clone $date)->add($this->recurDiff);
+    return [
+      'value' => $date,
+      'end_value' => $dateEnd,
+    ];
   }
 
   /**
