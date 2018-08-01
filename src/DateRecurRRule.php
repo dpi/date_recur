@@ -75,12 +75,12 @@ class DateRecurRRule implements \Iterator {
    * @param \DateTime $startDate
    *   The initial occurrence start date.
    * @param \DateTime|null $startDateEnd
-   *   The initial occurrence end date.
+   *   The initial occurrence end date, or NULL to use start date.
    */
-  public function __construct($rrule, \DateTime $startDate, \DateTime $startDateEnd) {
+  public function __construct($rrule, \DateTime $startDate, \DateTime $startDateEnd = NULL) {
     $this->startDate = $startDate;
-    $this->startDateEnd = $startDateEnd;
-    $this->recurDiff = $this->startDate->diff($startDateEnd);
+    $this->startDateEnd = isset($startDateEnd) ? $startDateEnd : clone $startDate;
+    $this->recurDiff = $this->startDate->diff($this->startDateEnd);
 
     $this->parseRrule($rrule, $startDate);
 
