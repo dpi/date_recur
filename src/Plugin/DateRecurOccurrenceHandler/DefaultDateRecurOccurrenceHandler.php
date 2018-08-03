@@ -4,18 +4,19 @@ namespace Drupal\date_recur\Plugin\DateRecurOccurrenceHandler;
 
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Plugin\PluginBase;
+use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\DataDefinition;
 use Drupal\Core\TypedData\ListDataDefinition;
 use Drupal\Core\TypedData\MapDataDefinition;
+use Drupal\date_recur\DateRange;
 use Drupal\date_recur\DateRecurOccurrencesComputed;
 use Drupal\date_recur\DateRecurRRule;
+use Drupal\date_recur\DateRecurUtility;
 use Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
-use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Zend\Stdlib\Exception\InvalidArgumentException;
 
 /**
  * Provides the default occurrence handler.
@@ -25,7 +26,7 @@ use Zend\Stdlib\Exception\InvalidArgumentException;
  *  label = @Translation("Default occurrence handler"),
  * )
  */
-class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurOccurrenceHandlerInterface, ContainerFactoryPluginInterface, \Iterator {
+class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurOccurrenceHandlerInterface, ContainerFactoryPluginInterface {
 
   /**
    * The database connection.
@@ -35,14 +36,16 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   protected $database;
 
   /**
-   * @var DateRecurItem
+   * The date_recur field item.
+   *
+   * @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem
    */
   protected $item;
 
   /**
    * The repeat rule object.
    *
-   * @var DateRecurRRule
+   * @var \Drupal\date_recur\DateRecurRRule
    */
   protected $rruleObject;
 
@@ -97,8 +100,14 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   public function init(DateRecurItem $item) {
     $this->item = $item;
     if (!empty($item->rrule)) {
-      $this->rruleObject = new DateRecurRRule($item->rrule, $item->start_date, $item->end_date, $item->timezone);
+      $startDate = DateRecurUtility::toPhpDateTime($item->start_date);
+      $startDateEnd = DateRecurUtility::toPhpDateTime($item->end_date);
+      // Set the timezone to the same as the source timezone for convenience.
+      $tz = new \DateTimeZone($item->timezone);
+      $startDate->setTimezone($tz);
+      $startDateEnd->setTimezone($tz);
       $this->isRecurring = TRUE;
+      $this->rruleObject = new DateRecurRRule($item->rrule, $startDate, $startDateEnd);
     }
     else {
       $this->isRecurring = FALSE;
@@ -141,10 +150,11 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
    * {@inheritdoc}
    */
   public function isInfinite() {
+    // @todo test either outcome.
     if (empty($this->item) || !$this->isRecurring) {
-      return 0;
+      return FALSE;
     }
-    return (int) $this->rruleObject->isInfinite();
+    return (bool) $this->rruleObject->isInfinite();
   }
 
   /**
@@ -245,7 +255,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
    * {@inheritdoc}
    */
   public function onDelete() {
-    $table_name = $this->getOccurrenceCacheStorageTableName($this->item->getFieldDefinition());
+    $table_name = $this->getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
     $q = $this->database->delete($table_name);
     $q->condition('entity_id', $this->item->getEntity()->id());
     $q->execute();
@@ -255,7 +265,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
    * {@inheritdoc}
    */
   public function onDeleteRevision() {
-    $table_name = $this->getOccurrenceCacheStorageTableName($this->item->getFieldDefinition());
+    $table_name = $this->getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
     $q = $this->database->delete($table_name);
     $q->condition('entity_id', $this->item->getEntity()->id());
     $q->condition('revision_id', $this->item->getEntity()->getRevisionId());
@@ -433,76 +443,21 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   /**
    * {@inheritdoc}
    */
-  public function occurrencePropertyDefinition(FieldStorageDefinitionInterface $field_definition) {
-    $occurrence = MapDataDefinition::create()
-      ->setPropertyDefinition('value', DataDefinition::create('datetime_iso8601')
-        ->setLabel(t('Occurrence start date')))
-      ->setPropertyDefinition('end_value', DataDefinition::create('datetime_iso8601')
-        ->setLabel(t('Occurrence end date')));
-
-    $occurrences = ListDataDefinition::create('map')
-      ->setItemDefinition($occurrence)
-      ->setLabel(t('Occurrences'))
-      ->setComputed(true)
+  public static function occurrencePropertyDefinition(FieldStorageDefinitionInterface $field_definition) {
+    $occurrences = ListDataDefinition::create('any')
+//      ->setItemDefinition($occurrence)
+      ->setLabel(new TranslatableMarkup('Occurrences'))
+      ->setComputed(TRUE)
       ->setClass(DateRecurOccurrencesComputed::class);
 
     return $occurrences;
   }
 
   /**
-   * Return the current element
-   */
-  public function current() {
-    if (empty($this->rruleObject)) {
-      return NULL;
-    }
-    return $this->rruleObject->current();
-  }
-
-  /**
-   * Move forward to next element
-   */
-  public function next() {
-    if (!empty($this->rruleObject)) {
-      $this->rruleObject->next();
-    }
-  }
-
-  /**
-   * Return the key of the current element
-   */
-  public function key() {
-    if (empty($this->rruleObject)) {
-      return NULL;
-    }
-    return $this->rruleObject->key();
-  }
-
-  /**
-   * Checks if current position is valid
-   */
-  public function valid() {
-    if (empty($this->rruleObject)) {
-      return FALSE;
-    }
-    return $this->rruleObject->valid();
-  }
-
-  /**
-   * Rewind the Iterator to the first element
-   */
-  public function rewind() {
-    if (!empty($this->rruleObject)) {
-      $this->rruleObject->rewind();
-    }
-  }
-
-  /**
-   * Obj.
+   * Get the RRULE object.
    *
    * @return \Drupal\date_recur\DateRecurRRule
-   *   Obj
-   * @todo remove
+   *   The RRULE object.
    */
   public function getRruleObject() {
     return $this->rruleObject;

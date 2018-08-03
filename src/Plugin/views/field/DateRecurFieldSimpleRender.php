@@ -84,6 +84,9 @@ class DateRecurFieldSimpleRender extends EntityField {
     return $build;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function getEntity(ResultRow $values) {
     $entity = parent::getEntity($values);
     $field_name = $this->definition['field_name'];
@@ -101,9 +104,11 @@ class DateRecurFieldSimpleRender extends EntityField {
     return $entity;
   }
 
+  /**
+   * {@inheritdoc}
+   */
   public function allowAdvancedRender() {
     return FALSE;
   }
 
 }
-

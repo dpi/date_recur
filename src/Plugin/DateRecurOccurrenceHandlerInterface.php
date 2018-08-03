@@ -129,8 +129,11 @@ interface DateRecurOccurrenceHandlerInterface extends PluginInspectionInterface 
   public function viewsData(FieldStorageDefinitionInterface $fieldDefinition, $data);
 
   /**
+   * Provides the definition for 'occurrences' property on date_recur fields.
+   *
    * @param \Drupal\Core\Field\FieldStorageDefinitionInterface $field_definition
    * @return DataDefinitionInterface
    */
-  public function occurrencePropertyDefinition(FieldStorageDefinitionInterface $field_definition);
+  public static function occurrencePropertyDefinition(FieldStorageDefinitionInterface $field_definition);
+
 }

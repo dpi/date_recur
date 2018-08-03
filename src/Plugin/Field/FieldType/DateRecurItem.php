@@ -2,14 +2,12 @@
 
 namespace Drupal\date_recur\Plugin\Field\FieldType;
 
-use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\DataDefinition;
-use Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerManager;
+use Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerManagerInterface;
 use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeItem;
-use Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface;
 
 /**
  * Plugin implementation of the 'date_recur' field type.
@@ -24,10 +22,22 @@ use Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface;
  * )
  */
 class DateRecurItem extends DateRangeItem {
+
   /**
-   * @var DateRecurOccurrenceHandlerInterface;
+   * The initialized occurrence manager.
+   *
+   * @var \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface|null
    */
-  protected $occurrenceHandler;
+  protected $occurrenceHandler = NULL;
+
+  /**
+   * The occurrence handler manager.
+   *
+   * Used for unit testing, not set during normal operation..
+   *
+   * @var \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerManagerInterface|null
+   */
+  protected $occurrenceHandlerPluginManager = NULL;
 
   /**
    * {@inheritdoc}
@@ -35,18 +45,19 @@ class DateRecurItem extends DateRangeItem {
   public static function propertyDefinitions(FieldStorageDefinitionInterface $field_definition) {
     $properties = parent::propertyDefinitions($field_definition);
     // Prevent early t() calls by using the TranslatableMarkup.
-    $properties['timezone'] = DataDefinition::create('string')
-      ->setLabel(new TranslatableMarkup('Timezone'))
-      ->setRequired(FALSE);
     $properties['rrule'] = DataDefinition::create('string')
       ->setLabel(new TranslatableMarkup('RRule'))
       ->setRequired(FALSE);
+    $properties['timezone'] = DataDefinition::create('string')
+      ->setLabel(new TranslatableMarkup('Timezone'))
+      ->setRequired(FALSE);
     $properties['infinite'] = DataDefinition::create('boolean')
-      ->setLabel(new TranslatableMarkup('Is the RRule an infinite rule?'))
+      ->setLabel(new TranslatableMarkup('Whether the RRule is an infinite rule. Derived value from RRULE.'))
       ->setRequired(FALSE);
 
-    $handler = date_recur_create_occurrence_handler($field_definition);
-    $properties['occurrences'] = $handler->occurrencePropertyDefinition($field_definition);
+    // @todo inject or something.
+    $properties['occurrences'] = date_recur_create_occurrence_handler($field_definition)
+      ->occurrencePropertyDefinition($field_definition);
 
     return $properties;
   }
@@ -62,26 +73,18 @@ class DateRecurItem extends DateRangeItem {
       'type' => 'varchar',
       'length' => 255,
     ];
-    $schema['columns']['infinite'] = [
-      'description' => 'Infinity of the repeat rule.',
-      'type' => 'int',
-      'size' => 'tiny',
-    ];
     $schema['columns']['timezone'] = [
-      'description' => 'The timezone',
+      'description' => 'The timezone.',
       'type' => 'varchar',
       'length' => 255,
     ];
+    $schema['columns']['infinite'] = [
+      'description' => 'Whether the RRule is an infinite rule. Derived value from RRULE.',
+      'type' => 'int',
+      'size' => 'tiny',
+    ];
 
     return $schema;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public static function generateSampleValue(FieldDefinitionInterface $field_definition) {
-    $values = parent::generateSampleValue($field_definition);
-    return $values;
   }
 
   /**
@@ -98,20 +101,19 @@ class DateRecurItem extends DateRangeItem {
    */
   public function storageSettingsForm(array &$form, FormStateInterface $form_state, $has_data) {
     $elements = parent::storageSettingsForm($form, $form_state, $has_data);
-    $handler_options = [];
-    /** @var DateRecurOccurrenceHandlerManager $manager */
-    $manager = \Drupal::getContainer()
-      ->get('plugin.manager.date_recur_occurrence_handler');
-    foreach ($manager->getDefinitions() as $id => $definition) {
-      $handler_options[$id] = $definition['label'];
-    }
+
+    $options = array_map(function (array $definition) {
+      return $definition['label'];
+    }, $this->getOccurrenceHandlerPluginManager()->getDefinitions());
+
     $elements['occurrence_handler_plugin'] = [
       '#type' => 'select',
-      '#title' => t('Occurrence handler'),
-      '#description' => t('Select an occurrence handler for calculating, saving and retrieving occurrences.'),
-      '#options' => $handler_options,
+      '#title' => $this->t('Occurrence handler'),
+      '#description' => $this->t('Select an occurrence handler for calculating, saving, and retrieving occurrences.'),
+      '#options' => $options,
       '#default_value' => $this->getSetting('occurrence_handler_plugin'),
     ];
+
     return $elements;
   }
 
@@ -120,6 +122,7 @@ class DateRecurItem extends DateRangeItem {
    */
   public static function defaultFieldSettings() {
     return [
+      // @todo needs settings tests.
       'precreate' => 'P2Y',
     ] + parent::defaultFieldSettings();
   }
@@ -129,57 +132,48 @@ class DateRecurItem extends DateRangeItem {
    */
   public function fieldSettingsForm(array $form, FormStateInterface $form_state) {
     $element = parent::fieldSettingsForm($form, $form_state);
+
+    // @todo Needs UI tests.
     $options = [];
-    for ($i = 1; $i < 6; $i++) {
-      $options['P' . $i . 'Y'] = $this->formatPlural($i, '@count year', '@count years', ['@count' => $i]);
+    foreach (range(1, 5) as $i) {
+      $options['P' . $i . 'Y'] = $this->formatPlural($i, '@year year', '@year years', ['@year' => $i]);
     }
+    // @todo allow custom values.
     $element['precreate'] = [
       '#type' => 'select',
-      '#title' => t('Precreate occurrences'),
-      '#description' => t('For infinitely repeating dates, precreate occurrences for this amount of time in the views cache table.'),
+      '#title' => $this->t('Precreate occurrences'),
+      '#description' => $this->t('For infinitely repeating dates, precreate occurrences for this amount of time in the views cache table.'),
       '#options' => $options,
       '#default_value' => $this->getSetting('precreate'),
     ];
-    return $element;
-  }
 
-  /**
-   * {@inheritdoc}
-   */
-  public function isEmpty() {
-    return parent::isEmpty();
+    return $element;
   }
 
   /**
    * Get the date storage format of this field.
    *
    * @return string
+   *   A date format string.
    */
   public function getDateStorageFormat() {
-    switch ($this->getSetting('daterange_type')) {
-      case DateRangeItem::DATETIME_TYPE_DATE:
-        return DATETIME_DATE_STORAGE_FORMAT;
-        break;
-      default:
-        return DATETIME_DATETIME_STORAGE_FORMAT;
-        break;
-    }
+    // @todo tests.
+    return $this->getSetting('daterange_type') == static::DATETIME_TYPE_DATETIME ? static::DATETIME_STORAGE_FORMAT : static::DATE_STORAGE_FORMAT;
   }
 
   /**
    * Get the occurrence handler and initialize it.
    *
    * @return \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface|\Drupal\date_recur\Plugin\DateRecurOccurrenceHandler\DefaultDateRecurOccurrenceHandler
-   *   An occurrence handler
+   *   An occurrence handler.
    *
-   * @throws \Exception
-   *   Throws exceptions.
+   * @throws \Drupal\Component\Plugin\Exception\PluginException
+   *   Exception thrown if plugin could not be created.
    */
   public function getOccurrenceHandler() {
-    if (empty($this->occurrenceHandler)) {
-      $pluginName = $this->getSetting('occurrence_handler_plugin');
-      $manager = \Drupal::service('plugin.manager.date_recur_occurrence_handler');
-      $this->occurrenceHandler = $manager->createInstance($pluginName);
+    // @todo rename, its long.
+    if (!isset($this->occurrenceHandler)) {
+      $this->occurrenceHandler = $this->getPlugin();
       $this->occurrenceHandler->init($this);
     }
     return $this->occurrenceHandler;
@@ -190,6 +184,7 @@ class DateRecurItem extends DateRangeItem {
    */
   public function onChange($property_name, $notify = TRUE) {
     // Enforce that the occurrence handler is re-initialized.
+    // @todo test occurrencehandler is reinitialised.
     $this->occurrenceHandler = NULL;
     parent::onChange($property_name, $notify);
   }
@@ -199,7 +194,9 @@ class DateRecurItem extends DateRangeItem {
    */
   public function preSave() {
     parent::preSave();
-    $this->infinite = $this->getOccurrenceHandler()->isInfinite();
+    // @todo test infinite prop is set.
+    $isInfinite = $this->getOccurrenceHandler()->isInfinite();
+    $this->get('infinite')->setValue($isInfinite);
   }
 
   /**
@@ -208,8 +205,52 @@ class DateRecurItem extends DateRangeItem {
    * Field items have their name property set to the delta.
    *
    * @return int
+   *   The delta.
+   *
+   * @deprecated should not be required. List already have deltas.
+   * @internal used by views only.
    */
   public function getDelta() {
     return (int) $this->name;
   }
+
+  /**
+   * Get the occurrence handler manager.
+   *
+   * @return \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerManagerInterface
+   *   The occurrence handler plugin manager.
+   */
+  protected function getOccurrenceHandlerPluginManager() {
+    if (isset($this->occurrenceHandlerPluginManager)) {
+      return $this->occurrenceHandlerPluginManager;
+    }
+    return \Drupal::service('plugin.manager.date_recur_occurrence_handler');
+  }
+
+  /**
+   * Set the occurrence handler manager.
+   *
+   * Used for unit testing.
+   *
+   * @param \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerManagerInterface $occurrenceHandlerManager
+   *   The occurrence handler plugin manager.
+   */
+  public function setOccurrenceHandlerPluginManager(DateRecurOccurrenceHandlerManagerInterface $occurrenceHandlerManager) {
+    $this->occurrenceHandlerPluginManager = $occurrenceHandlerManager;
+  }
+
+  /**
+   * Todo.
+   *
+   * @return \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface
+   *   Todo.
+   *
+   * @throws \Drupal\Component\Plugin\Exception\PluginException
+   */
+  protected function getPlugin() {
+    $pluginName = $this->getSetting('occurrence_handler_plugin');
+    return $this->getOccurrenceHandlerPluginManager()
+      ->createInstance($pluginName);
+  }
+
 }

@@ -9,11 +9,11 @@ use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\KernelTests\KernelTestBase;
 
 /**
- * Tests basic functionality of date_recur fields.
+ * Tests date_recur fields.
  *
  * @group date_recur
  */
-class DateRecurTest extends KernelTestBase {
+class DateRecurFieldTest extends KernelTestBase {
 
   /**
    * {@inheritdoc}
@@ -28,12 +28,13 @@ class DateRecurTest extends KernelTestBase {
   ];
 
   /**
-   * Tests adding a field, setting values, reading occurrences.
+   * {@inheritdoc}
    */
-  public function testGetOccurrencesForDisplay() {
+  protected function setUp() {
+    parent::setUp();
     $field_storage = FieldStorageConfig::create([
       'entity_type' => 'entity_test',
-      'field_name' => 'abc',
+      'field_name' => 'foo',
       'type' => 'date_recur',
       'settings' => [
         'datetime_type' => DateRecurItem::DATETIME_TYPE_DATETIME,
@@ -43,31 +44,46 @@ class DateRecurTest extends KernelTestBase {
     $field_storage->save();
 
     $field = [
-      'field_name' => 'abc',
+      'field_name' => 'foo',
       'entity_type' => 'entity_test',
       'bundle' => 'entity_test',
     ];
     FieldConfig::create($field)->save();
+  }
 
+  /**
+   * Tests storage timezone is returned.
+   *
+   * Not the timezone used for current request, or default to UTC per storage.
+   */
+  public function testOccurrencesTimezone() {
+    // Set the timezone to something different than UTC or storage.
+    date_default_timezone_set('Pacific/Wake');
+
+    $tzChristmas = new \DateTimeZone('Indian/Christmas');
     $entity = EntityTest::create();
-    $entity->abc = [
+    $entity->foo = [
       'value' => '2014-06-15T23:00:00',
       'end_value' => '2014-06-16T07:00:00',
       'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR',
       'infinite' => '1',
-      'timezone' => 'Australia/Sydney',
+      'timezone' => $tzChristmas->getName(),
     ];
 
-    // No need to save the entity.
-    $this->assertTrue($entity->isNew());
     /** @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $item */
-    $item = $entity->abc[0];
+    $item = $entity->get('foo')[0];
     $occurrences = $item->getOccurrenceHandler()
-      ->getOccurrencesForDisplay(NULL, NULL, 2);
-    $this->assertEquals('Mon, 16 Jun 2014 09:00:00 +1000', $occurrences[0]['value']->format('r'));
-    $this->assertEquals('Mon, 16 Jun 2014 17:00:00 +1000', $occurrences[0]['end_value']->format('r'));
-    $this->assertEquals('Tue, 17 Jun 2014 09:00:00 +1000', $occurrences[1]['value']->format('r'));
-    $this->assertEquals('Tue, 17 Jun 2014 17:00:00 +1000', $occurrences[1]['end_value']->format('r'));
+      ->getRruleObject()
+      ->getAllOccurrences(NULL, NULL, 1);
+
+    // Christmas island is UTC+7, so start time will be 6am.
+    $assertDateStart = new \DateTime('6am 2014-06-16', $tzChristmas);
+    $assertDateEnd = new \DateTime('2pm 2014-06-16', $tzChristmas);
+
+    $this->assertTrue($assertDateStart == $occurrences[0]->getStart());
+    $this->assertEquals($tzChristmas->getName(), $occurrences[0]->getStart()->getTimezone()->getName());
+    $this->assertTrue($assertDateEnd == $occurrences[0]->getEnd());
+    $this->assertEquals($tzChristmas->getName(), $occurrences[0]->getEnd()->getTimezone()->getName());
   }
 
 }

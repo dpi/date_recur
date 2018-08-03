@@ -3,7 +3,6 @@
 namespace Drupal\date_recur\Plugin\Field\FieldType;
 
 use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeFieldItemList;
-use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeItem;
 
 /**
  * Represents a configurable entity date_recur field.

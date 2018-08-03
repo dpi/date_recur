@@ -90,21 +90,16 @@ class DateRecurDefaultWidget extends DateRangeDefaultWidget {
   }
 
   /**
-   * Creates a date object for use as a default value.
-   *
-   * This overrides DateRangeWidgetBase to change timezone override.
-   *
-   * @param \Drupal\Core\Datetime\DrupalDateTime $date
-   * @param string $timezone
-   * @return \Drupal\Core\Datetime\DrupalDateTime
+   * {@inheritdoc}
    */
   protected function createDefaultValue($date, $timezone) {
+    parent::createDefaultValue($date, $timezone);
     // The date was created and verified during field_load(), so it is safe to
     // use without further inspection.
     if ($this->getFieldSetting('datetime_type') == DateTimeItem::DATETIME_TYPE_DATE) {
       // A date without time will pick up the current time, use the default
       // time.
-      datetime_date_default_time($date);
+      $date->setDefaultDateTime();
     }
     $date->setTimezone(new \DateTimeZone($this->getTimezone()));
     return $date;

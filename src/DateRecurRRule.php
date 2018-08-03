@@ -15,34 +15,30 @@ namespace Drupal\date_recur;
  */
 
 use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use RRule\RRule;
 use RRule\RfcParser;
 
 /**
  * Defines the DateRecurRRule class.
+ *
+ * @todo rename to helper?
  */
 class DateRecurRRule implements \Iterator {
 
   /**
-   * The RRULE object.
+   * BY* list delimiter.
    *
-   * @var \Drupal\date_recur\DateRecurDefaultRSet
+   * @internal Will be made protected when PHP7.1 is required.
    */
-  protected $rrule;
+  const BY_LIST_DELIMITER = ',';
 
   /**
-   * The initial occurrence start date.
+   * The RRULE set.
    *
-   * @var \DateTime
+   * @var \Drupal\date_recur\DateRecurRSetInterface
    */
-  protected $startDate;
-
-  /**
-   * The initial occurrence end date.
-   *
-   * @var \DateTime
-   */
-  protected $startDateEnd;
+  protected $set;
 
   /**
    * Difference between start date and start date end.
@@ -78,88 +74,101 @@ class DateRecurRRule implements \Iterator {
    *   The initial occurrence end date, or NULL to use start date.
    */
   public function __construct($rrule, \DateTime $startDate, \DateTime $startDateEnd = NULL) {
-    $this->startDate = $startDate;
-    $this->startDateEnd = isset($startDateEnd) ? $startDateEnd : clone $startDate;
-    $this->recurDiff = $this->startDate->diff($this->startDateEnd);
+    $startDateEnd = isset($startDateEnd) ? $startDateEnd : clone $startDate;
+    $this->recurDiff = $startDate->diff($startDateEnd);
 
-    $this->parseRrule($rrule, $startDate);
+    list($parts, $setParts) = static::parseRrule($rrule, $startDate);
+    $this->parts = $parts; // @todo remove: backcompat.
 
-    $this->rrule = new DateRecurDefaultRSet();
-    $this->rrule->addRRule(new DateRecurDefaultRRule($this->parts));
-    if (!empty($this->setParts)) {
-      foreach ($this->setParts as $type => $type_parts) {
-        foreach ($type_parts as $part) {
-          list(, $part) = explode(':', $part);
-          switch ($type) {
-            case 'RDATE':
-              $this->rrule->addDate($part);
-              break;
+    $this->set = (new DateRecurDefaultRSet())
+      ->addRRule(new DateRecurDefaultRRule($parts));
 
-            case 'EXDATE':
-              $this->rrule->addExDate($part);
-              break;
+    foreach ($setParts as $type => $values) {
+      foreach ($values as $value) {
+        switch ($type) {
+          case 'RDATE':
+            $this->set->addDate($value);
+            break;
 
-            case 'EXRULE':
-              $this->rrule->addExRule($part);
-          }
+          case 'EXDATE':
+            $this->set->addExDate($value);
+            break;
+
+          case 'EXRULE':
+            $this->set->addExRule($value);
         }
       }
     }
   }
 
+  /**
+   * Get the RULE parts.
+   *
+   * For example, "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;" will return:
+   *
+   * @code
+   *
+   * [
+   *   'BYDAY' => 'MO,TU,WE,TH,FR',
+   *   'DTSTART' => \DateTime(...),
+   *   'FREQ' => 'WEEKLY',
+   * ]
+   *
+   * @endcode
+   *
+   * @return array
+   *   The parts of the RRULE.
+   */
   public function getParts() {
     return $this->parts;
   }
 
   /**
-   * Parse an RFC rrule string and add a start date (DTSTART).
+   * Parse RRULE lines.
    *
-   * @param string $rrule
-   *   The repeat rule.
+   * @param string $string
+   *   The rule lines.
    * @param \DateTime $startDate
    *   The initial occurrence start date.
+   *
+   * @return array
+   *   A tuple containing:
+   *   - RRULE parts.
+   *   - Other set parts.
    *
    * @throws \InvalidArgumentException
    *   If the RRULE is malformed.
    */
-  public function parseRrule($rrule, \DateTime $startDate) {
-    // Correct formatting.
-    if (strpos($rrule, "\n") === FALSE && strpos($rrule, 'RRULE:') !== 0) {
-      $rrule = "RRULE:$rrule";
+  public static function parseRrule($string, \DateTime $startDate) {
+    // @todo move elsewhere, make static.
+    // Ensure the string is prefixed with RRULE if not multiline.
+    if (strpos($string, "\n") === FALSE && strpos($string, 'RRULE:') !== 0) {
+      $string = "RRULE:$string";
     }
 
-    // Check for unsupported parts.
-    $set_keys = ['RDATE', 'EXRULE', 'EXDATE'];
-    $rules = $set_parts = [];
-    foreach (explode("\n", $rrule) as $key => $part) {
-      $els = explode(':', $part);
-      if (in_array($els[0], $set_keys)) {
-        $set_parts[$els[0]][] = $part;
-      }
-      elseif ($els[0] == 'RRULE') {
-        $rules[] = $part;
-      }
-      elseif ($els[0] == 'DTSTART') {
-      }
-      else {
+    $parts = [
+      'RDATE' => [],
+      'EXRULE' => [],
+      'EXDATE' => [],
+      'RRULE' => [],
+    ];
+
+    $lines = explode("\n", $string);
+    foreach ($lines as $line) {
+      list($part, $partValue) = explode(':', $line, 2);
+      if (!isset($parts[$part])) {
         throw new \InvalidArgumentException("Unsupported line: " . $part);
       }
+      $parts[$part][] = $partValue;
     }
 
-    if (!count($rules)) {
-      throw new \InvalidArgumentException("Missing RRULE line: " . $rrule);
-    }
-    if (count($rules) > 1) {
-      throw new \InvalidArgumentException("More than one RRULE line is not supported.");
+    if (($count = count($parts['RRULE'])) !== 1) {
+      throw new \InvalidArgumentException(sprintf('One RRULE must be provided. %d provided.', $count));
     }
 
-    $rrule = $rules[0];
-
-    if (empty($parts['WKST'])) {
-      $parts['WKST'] = 'MO';
-    }
-    $this->parts = RfcParser::parseRRule($rrule, $startDate);
-    $this->setParts = $set_parts;
+    $rruleParts = RfcParser::parseRRule(reset($parts['RRULE']), $startDate);
+    unset($parts['RRULE']);
+    return [$rruleParts, $parts];
   }
 
   /**
@@ -172,6 +181,9 @@ class DateRecurRRule implements \Iterator {
    * @return bool
    */
   public static function validateRule($rrule, $startDate) {
+    // test.
+    // validte should be bool no exception. implies safety. if u watn exceptions then you'd call this manually.
+//    If you want the message then...
     $rule = new self($rrule, $startDate);
     return TRUE;
   }
@@ -212,41 +224,31 @@ class DateRecurRRule implements \Iterator {
   }
 
   /**
-   * Check if the rule is infinite.
-   *
-   * @return bool
-   */
-  public function isInfinite() {
-    return $this->rrule->isInfinite();
-  }
-
-  /**
    * Get the occurrences for storage in the cache table (for views).
    *
    * @see DateRecurFieldItemList::postSave()
    *
-   * @param \DateTime $until For infinite dates create until that date.
-   * @param string $storageFormat The desired date format.
+   * @param \DateTime $until
+   *   For infinite dates create until that date.
+   * @param string $storageFormat
+   *   The desired date format.
+   *
    * @return array
    */
   public function getOccurrencesForCacheStorage(\DateTime $until, $storageFormat) {
     $occurrences = [];
-    if (!$this->rrule->isInfinite()) {
-      $occurrences += $this->createOccurrences(NULL, NULL, NULL, FALSE);
-    }
-    else {
-      $occurrences += $this->createOccurrences(NULL, $until, NULL, FALSE);
-    }
+    $until = $this->set->isFinite() ? NULL : $until;
+    $occurrences = $this->getAllOccurrences(NULL, $until);
 
-    foreach ($occurrences as &$row) {
-      foreach ($row as $key => $date) {
-        if (!empty($date)) {
-          $row[$key] = self::massageDateValueForStorage($date, $storageFormat);
-        }
-      }
-    }
 
-    return $occurrences;
+    return array_map(
+      function (DateRange $occurrence) use ($storageFormat) {
+        return [
+          'value' => DateRecurRRule::massageDateValueForStorage($occurrence->getStart(), $storageFormat),
+          'end_value' => DateRecurRRule::massageDateValueForStorage($occurrence->getEnd(), $storageFormat),
+        ];
+      }, $occurrences
+    );
   }
 
   /**
@@ -265,12 +267,12 @@ class DateRecurRRule implements \Iterator {
    *    - end_value: the end date as DrupalDateTime.
    */
   protected function createOccurrences(\DateTime $start = NULL, \DateTime $end = NULL, $num = NULL) {
-    if ($this->rrule->isInfinite() && !$end && !$num) {
+    if ($this->set->isInfinite() && !$end && !$num) {
       throw new \LogicException('Cannot get all occurrences of an infinite recurrence rule.');
     }
 
     $occurrences = [];
-    foreach ($this->rrule as $occurrence) {
+    foreach ($this->set as $occurrence) {
       /** @var \DateTime $occurrence */
       // Allow the occurrence if it is partially within the duration of the
       // range.
@@ -309,7 +311,7 @@ class DateRecurRRule implements \Iterator {
    *   A generator.
    */
   public function generateOccurrences(\Datetime $rangeStart = NULL, \Datetime $rangeEnd = NULL) {
-    foreach ($this->rrule as $occurrenceStart) {
+    foreach ($this->set as $occurrenceStart) {
       /** @var \DateTime $occurrence */
       $occurrenceEnd = (clone $occurrenceStart)->add($this->recurDiff);
 
@@ -410,93 +412,91 @@ class DateRecurRRule implements \Iterator {
     return $date->setTimezone(new \DateTimeZone($this->timezone));
   }
 
-  public static function massageDateValueForStorage($date, $format) {
-    if ($format == DATETIME_DATE_STORAGE_FORMAT) {
-      datetime_date_default_time($date);
+  public static function massageDateValueForStorage(\DateTime $date, $format) {
+    if ($format == DateRecurItem::DATE_STORAGE_FORMAT) {
+      $date->setTime(12, 0, 0);
     }
-    $date->setTimezone(new \DateTimeZone(DATETIME_STORAGE_TIMEZONE));
+    $date->setTimezone(new \DateTimeZone(DateRecurItem::STORAGE_TIMEZONE));
     // Adjust the date for storage.
     return $date->format($format);
   }
 
-  public function getWeekdays() {
-
-    $weekdays = [];
-    $byday = $this->parts['BYDAY'];
-    if (!is_array($byday) ) {
-      $byday = explode(',', $byday);
-    }
-
-    $this->byweekday = array();
-    $this->byweekday_nth = array();
-    foreach ($byday as $value) {
-      $value = trim(strtoupper($value));
-      $valid = preg_match('/^([+-]?[0-9]+)?([A-Z]{2})$/', $value, $matches);
-
-      if (!empty($matches[2])) {
-        $day = RRule::$week_days[$matches[2]];
-        $weekdays[$day] = $day;
-      }
-    }
-    return $weekdays;
-
-    if (!empty($this->parts['BYDAY'])) {
-      $days = explode(',', $this->parts['BYDAY']);
-      foreach ($days as $day) {
-        $day = preg_replace('/[\+\-0-9]*/', '', $day);
-        $weekdays[$day] = $day;
-      }
-    }
-    return $weekdays;
-  }
-
   /**
-   * Get a human-readable representation of the repeat rule.
+   * Get the BYDAY part as an array.
    *
-   * @todo: Make this translatable.
+   * @return array
+   *   An array of weekday code keyed by weekday number, see
+   *   \RRule\RRule::$week_days for a map. Array is empty if RRULE did not
+   *   contain any weekdays.
    *
-   * @return string
+   * @see \RRule\RRule::$week_days
    */
-  public function humanReadable() {
-    return $this->rrule->humanReadable();
+  public function getWeekdays() {
+    if (!isset($this->parts['BYDAY'])) {
+      return [];
+    }
+    $byDay = explode(static::BY_LIST_DELIMITER, $this->parts['BYDAY']);
+    // The following will sort the days and remove duplicates.
+    return array_intersect(array_flip(RRule::$week_days), $byDay);
   }
 
   /**
-   * Return the current element
+   * Return the current element.
    */
   public function current() {
-    if ($date = $this->rrule->current()) {
+    if ($date = $this->set->current()) {
       return $this->massageOccurrence($date);
     }
   }
 
   /**
-   * Move forward to next element
+   * Move forward to next element.
    */
   public function next() {
-    if ($date = $this->rrule->next()) {
+    if ($date = $this->set->next()) {
       return $this->massageOccurrence($date);
     }
   }
 
   /**
-   * Return the key of the current element
+   * Return the key of the current element.
    */
   public function key() {
-    return $this->rrule->key();
+    return $this->set->key();
   }
 
   /**
-   * Checks if current position is valid
+   * Checks if current position is valid.
    */
   public function valid() {
-    return $this->rrule->valid();
+    return $this->set->valid();
   }
 
   /**
-   * Rewind the Iterator to the first element
+   * Rewind the Iterator to the first element.
    */
   public function rewind() {
-    $this->rrule->rewind();
+    $this->set->rewind();
   }
+
+  /**
+   * Implements the magic __call method.
+   *
+   * Passes through all unknown calls onto the RSET object.
+   *
+   * @param string $method
+   *   The method to call on the decorated object.
+   * @param array $args
+   *   Call arguments.
+   *
+   * @return mixed
+   *   The return value from the method on the decorated object.
+   */
+  public function __call($method, array $args) {
+    if (!method_exists($this->set, $method)) {
+      throw new \BadMethodCallException(sprintf('Call to undefined method %s::%s()', get_class($this), $method));
+    }
+    return call_user_func_array([$this->set, $method], $args);
+  }
+
 }

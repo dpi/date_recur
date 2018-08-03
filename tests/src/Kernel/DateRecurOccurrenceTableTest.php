@@ -12,6 +12,8 @@ use Drupal\KernelTests\KernelTestBase;
 /**
  * Tests occurrence tables.
  *
+ * @todo ensure the word cache isnt used anywhere.
+ *
  * @group date_recur
  */
 class DateRecurOccurrenceTableTest extends KernelTestBase {
@@ -145,5 +147,7 @@ class DateRecurOccurrenceTableTest extends KernelTestBase {
     $actual = DefaultDateRecurOccurrenceHandler::getOccurrenceCacheStorageTableName($fieldStorage);
     $this->assertEquals('date_recur__entity_test__foo', $actual);
   }
+
+  // @Todo test the actual values! not just a count.
 
 }

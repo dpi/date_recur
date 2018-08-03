@@ -1,43 +1,32 @@
 <?php
 
 namespace Drupal\date_recur;
-use Drupal\Core\TypedData\DataDefinitionInterface;
+
 use Drupal\Core\TypedData\Plugin\DataType\ItemList;
-use Drupal\Core\TypedData\TypedDataInterface;
-use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 
 /**
+ * Provides values for the computed 'occurrences' property on date recur fields.
  *
+ * Usage:
+ * @code
+ * $entity->field_myfield->occurrences
+ * @endcode
+ *
+ * @method \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem getParent()
  */
 class DateRecurOccurrencesComputed extends ItemList {
 
   /**
    * {@inheritdoc}
-   */
-  public function __construct(DataDefinitionInterface $definition, $name = NULL, TypedDataInterface $parent = NULL) {
-    parent::__construct($definition, $name, $parent);
-  }
-
-  /**
-   * {@inheritdoc}
+   *
+   * @return \Generator
+   *   An occurrence generator.
    */
   public function getValue($langcode = NULL) {
-    /** @var DateRecurItem $item */
-    $item = $this->getParent();
-    if ($item instanceof DateRecurItem) {
-      $values = $item->getOccurrenceHandler()->getOccurrencesForComputedProperty();
-      $this->setValue($values);
-    }
-    return parent::getValue();
-  }
-
-
-  /**
-   * {@inheritdoc}
-   */
-  public function isEmpty() {
-    $this->getValue();
-    return parent::isEmpty();
+    return $this->getParent()
+      ->getOccurrenceHandler()
+      ->getRruleObject()
+      ->generateOccurrences();
   }
 
 }
