@@ -8,6 +8,9 @@ use Drupal\Core\Extension\ModuleHandlerInterface;
 
 /**
  * Provides the Date recur occurrence handler plugin manager.
+ *
+ * A new instance of a occurrence handler is created on demand for each field
+ * item.
  */
 class DateRecurOccurrenceHandlerManager extends DefaultPluginManager implements DateRecurOccurrenceHandlerManagerInterface {
 

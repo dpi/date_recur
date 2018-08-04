@@ -164,7 +164,7 @@ class DateRecurItem extends DateRangeItem {
   /**
    * Get the occurrence handler and initialize it.
    *
-   * @return \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface|\Drupal\date_recur\Plugin\DateRecurOccurrenceHandler\DefaultDateRecurOccurrenceHandler
+   * @return \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface|\Drupal\date_recur\Plugin\DateRecurOccurrenceHandler\DateRecurRlOccurrenceHandler
    *   An occurrence handler.
    *
    * @throws \Drupal\Component\Plugin\Exception\PluginException
@@ -195,7 +195,7 @@ class DateRecurItem extends DateRangeItem {
   public function preSave() {
     parent::preSave();
     // @todo test infinite prop is set.
-    $isInfinite = $this->getOccurrenceHandler()->isInfinite();
+    $isInfinite = $this->getOccurrenceHandler()->getHelper()->isInfinite();
     $this->get('infinite')->setValue($isInfinite);
   }
 

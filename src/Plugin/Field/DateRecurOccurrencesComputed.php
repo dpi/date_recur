@@ -1,6 +1,6 @@
 <?php
 
-namespace Drupal\date_recur;
+namespace Drupal\date_recur\Plugin\Field;
 
 use Drupal\Core\TypedData\Plugin\DataType\ItemList;
 
@@ -12,7 +12,7 @@ use Drupal\Core\TypedData\Plugin\DataType\ItemList;
  * $entity->field_myfield->occurrences
  * @endcode
  *
- * @method \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem getParent()
+ * @method FieldType\DateRecurItem getParent()
  */
 class DateRecurOccurrencesComputed extends ItemList {
 
@@ -25,7 +25,7 @@ class DateRecurOccurrencesComputed extends ItemList {
   public function getValue($langcode = NULL) {
     return $this->getParent()
       ->getOccurrenceHandler()
-      ->getRruleObject()
+      ->getHelper()
       ->generateOccurrences();
   }
 

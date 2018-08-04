@@ -16,15 +16,18 @@ namespace Drupal\date_recur;
 
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
+use Drupal\date_recur\Rl\RlRSet;
+use Drupal\date_recur\Rl\RlRRule;
 use RRule\RRule;
 use RRule\RfcParser;
 
 /**
  * Defines the DateRecurRRule class.
  *
- * @todo rename to helper?
+ * @internal
+ * @deprecated Use DateRecurHelper instead.
  */
-class DateRecurRRule implements \Iterator {
+class LegacyDateRecurRRule implements \Iterator {
 
   /**
    * BY* list delimiter.
@@ -80,8 +83,8 @@ class DateRecurRRule implements \Iterator {
     list($parts, $setParts) = static::parseRrule($rrule, $startDate);
     $this->parts = $parts; // @todo remove: backcompat.
 
-    $this->set = (new DateRecurDefaultRSet())
-      ->addRRule(new DateRecurDefaultRRule($parts));
+    $this->set = (new RlRSet())
+      ->addRRule(new RlRRule($parts));
 
     foreach ($setParts as $type => $values) {
       foreach ($values as $value) {
@@ -224,34 +227,6 @@ class DateRecurRRule implements \Iterator {
   }
 
   /**
-   * Get the occurrences for storage in the cache table (for views).
-   *
-   * @see DateRecurFieldItemList::postSave()
-   *
-   * @param \DateTime $until
-   *   For infinite dates create until that date.
-   * @param string $storageFormat
-   *   The desired date format.
-   *
-   * @return array
-   */
-  public function getOccurrencesForCacheStorage(\DateTime $until, $storageFormat) {
-    $occurrences = [];
-    $until = $this->set->isFinite() ? NULL : $until;
-    $occurrences = $this->getAllOccurrences(NULL, $until);
-
-
-    return array_map(
-      function (DateRange $occurrence) use ($storageFormat) {
-        return [
-          'value' => DateRecurRRule::massageDateValueForStorage($occurrence->getStart(), $storageFormat),
-          'end_value' => DateRecurRRule::massageDateValueForStorage($occurrence->getEnd(), $storageFormat),
-        ];
-      }, $occurrences
-    );
-  }
-
-  /**
    * Get occurrences between a range of dates.
    *
    * @param \DateTime|null $start
@@ -297,85 +272,6 @@ class DateRecurRRule implements \Iterator {
     }
 
     return $occurrences;
-  }
-
-  /**
-   * Calculates occurrences as a generator.
-   *
-   * @param \DateTime|null $rangeStart
-   *   The start of the range, or start with the first available occurrence.
-   * @param \DateTime|null $rangeEnd
-   *   The end of the range, or never end.
-   *
-   * @return \Generator|\Drupal\date_recur\DateRange[]
-   *   A generator.
-   */
-  public function generateOccurrences(\Datetime $rangeStart = NULL, \Datetime $rangeEnd = NULL) {
-    foreach ($this->set as $occurrenceStart) {
-      /** @var \DateTime $occurrence */
-      $occurrenceEnd = (clone $occurrenceStart)->add($this->recurDiff);
-
-      if ($rangeStart) {
-        if ($occurrenceStart < $rangeStart && $occurrenceEnd < $rangeStart) {
-          continue;
-        }
-      }
-
-      if ($rangeEnd) {
-        if ($occurrenceStart > $rangeEnd && $occurrenceEnd > $rangeEnd) {
-          break;
-        }
-      }
-
-      yield new DateRange($occurrenceStart, $occurrenceEnd);
-    }
-
-    return NULL;
-  }
-
-  /**
-   * Get all occurrences.
-   *
-   * A limit and/or range-end must be passed.
-   *
-   * @param \DateTime|null $rangeStart
-   *   The start of the range, or start with the first available occurrence.
-   * @param \DateTime|null $rangeEnd
-   *   The end of the range.
-   * @param int|null $limit
-   *   A limit.
-   *
-   * @return \Drupal\date_recur\DateRange[]
-   *   The occurrences.
-   *
-   * @throws \InvalidArgumentException
-   *   Exceptions thrown if ranges are invalid or undefined.
-   */
-  public function getAllOccurrences(\Datetime $rangeStart = NULL, \Datetime $rangeEnd = NULL, $limit = NULL) {
-    // @todo rename to getOccurrences.
-    if ($this->isInfinite() && !isset($rangeEnd) && !isset($limit)) {
-      throw new \InvalidArgumentException('An infinite rule must have a date or count limit.');
-    }
-
-    $generator = $this->generateOccurrences($rangeStart, $rangeEnd);
-    if (isset($limit)) {
-      if (!is_int($limit) || $limit <= 0) {
-        // Limit must be a number and more than one.
-        throw new \InvalidArgumentException('Invalid count limit.');
-      }
-
-      // Generate occurrences until the limit is reached.
-      $occurrences = [];
-      foreach ($generator as $value) {
-        $occurrences[] = $value;
-        if (count($occurrences) >= $limit) {
-          break;
-        }
-      }
-      return $occurrences;
-    }
-
-    return iterator_to_array($generator);
   }
 
   /**

@@ -203,7 +203,10 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
       return $build;
     }
 
-    $occurrences = $item->getOccurrenceHandler()->getOccurrencesForDisplay($start, NULL, $count);
+    $occurrences = $item->getOccurrenceHandler()
+      ->getHelper()
+      // @todo change to generator.
+      ->getOccurrences($start, NULL, $count);
     foreach ($occurrences as $occurrence) {
       if (!empty($occurrence['value'])) {
         $build[] = $this->buildDateRangeValue($occurrence['value'], $occurrence['end_value'], TRUE);
@@ -212,4 +215,5 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
     $this->occurrenceCounter += count($occurrences);
     return $build;
   }
+
 }

@@ -4,6 +4,7 @@ namespace Drupal\date_recur\Plugin;
 
 use Drupal\Component\Plugin\PluginInspectionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\date_recur\DateRecurHelperInterface;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 
 /**
@@ -15,8 +16,17 @@ interface DateRecurOccurrenceHandlerInterface extends PluginInspectionInterface 
    * Init the handler with a field item.
    *
    * @param \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $item
+   *   A field item.
    */
   public function init(DateRecurItem $item);
+
+  /**
+   * Get the helper.
+   *
+   * @return \Drupal\date_recur\DateRecurHelperInterface
+   *   The helper.
+   */
+  public function getHelper();
 
   /**
    * Does the handler have a recurring date?
@@ -24,40 +34,6 @@ interface DateRecurOccurrenceHandlerInterface extends PluginInspectionInterface 
    * @return bool
    */
   public function isRecurring();
-
-  /**
-   * Does the handler have an infinitely recurring date?
-   *
-   * @return bool
-   */
-  public function isInfinite();
-
-  /**
-   * Get a list of occurrences for display.
-   *
-   * Must return an empty array for non-recurring dates.
-   * For recurring dates, an array of occurrences must be returned,
-   * each defining at least the following keys:
-   *  - value - DrupalDateTime
-   *  - end_value - DrupalDateTime
-   *  Additional keys may be included and may be supported by specific formatters.
-   *
-   * @param null|\DateTime|DrupalDateTime $start
-   * @param null|\DateTime|DrupalDateTime $end
-   * @param int $num
-   * @return array
-   */
-  public function getOccurrencesForDisplay($start = NULL, $end = NULL, $num = NULL);
-
-  /**
-   * Get a list of occurrences that fits the occurrence property schema.
-   *
-   * The returned array should match the schema that is returned by
-   * occurrencePropertyDefinition().
-   *
-   * @return array
-   */
-  public function getOccurrencesForComputedProperty();
 
   /**
    * Get a human-readable representation of the repeat rule.

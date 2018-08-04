@@ -8,6 +8,9 @@ use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeFieldItemList;
  * Represents a configurable entity date_recur field.
  */
 class DateRecurFieldItemList extends DateRangeFieldItemList {
+
+  // @todo add gethandler??
+
   public function postSave($update) {
     parent::postSave($update);
     /** @var DateRecurItem $item */

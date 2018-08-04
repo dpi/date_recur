@@ -1,12 +1,18 @@
 <?php
 
-namespace Drupal\date_recur;
+namespace Drupal\date_recur\Rl;
 
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use RRule\RRule;
+use RRule\RRuleInterface;
 
-class DateRecurDefaultRRule extends RRule implements DateRecurRRuleInterface {
+/**
+ * Wrapper around rlanvin/RRule.
+ *
+ * @ingroup RLanvinPhpRrule
+ */
+class RlRRule extends RRule implements RRuleInterface {
 
   use StringTranslationTrait;
 

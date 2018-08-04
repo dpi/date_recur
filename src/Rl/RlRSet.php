@@ -1,15 +1,17 @@
 <?php
-namespace Drupal\date_recur;
+
+namespace Drupal\date_recur\Rl;
 
 use RRule\RRule;
+use RRule\RRuleInterface;
 use RRule\RSet;
 
 /**
- * DateRecurDefaultRSet class.
+ * Wrapper around rlanvin/RSet.
  *
- * @property \Drupal\date_recur\DateRecurRRuleInterface[] $rrules
+ * @ingroup RLanvinPhpRrule
  */
-class DateRecurDefaultRSet extends RSet implements DateRecurRSetInterface {
+class RlRSet extends RSet implements RRuleInterface {
 
   /**
    * {@inheritdoc}

@@ -5,17 +5,16 @@ namespace Drupal\date_recur\Plugin\DateRecurOccurrenceHandler;
 use Drupal\Core\Database\Connection;
 use Drupal\Core\Plugin\PluginBase;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
-use Drupal\Core\TypedData\DataDefinition;
 use Drupal\Core\TypedData\ListDataDefinition;
-use Drupal\Core\TypedData\MapDataDefinition;
 use Drupal\date_recur\DateRange;
-use Drupal\date_recur\DateRecurOccurrencesComputed;
-use Drupal\date_recur\DateRecurRRule;
+use Drupal\date_recur\Plugin\Field\DateRecurOccurrencesComputed;
+use Drupal\date_recur\LegacyDateRecurRRule;
 use Drupal\date_recur\DateRecurUtility;
 use Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerInterface;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\date_recur\Rl\RlHelper;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
@@ -25,8 +24,10 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  *  id = "date_recur_occurrence_handler",
  *  label = @Translation("Default occurrence handler"),
  * )
+ *
+ * @ingroup RLanvinPhpRrule
  */
-class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurOccurrenceHandlerInterface, ContainerFactoryPluginInterface {
+class DateRecurRlOccurrenceHandler extends PluginBase implements DateRecurOccurrenceHandlerInterface, ContainerFactoryPluginInterface {
 
   /**
    * The database connection.
@@ -38,16 +39,17 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   /**
    * The date_recur field item.
    *
+   * @todo convert all usages to function, as item is not always set!
+   *
+   * handler can be used in item context, or outside.
+   *
+   * throw exception if no item.
+   *
+   * Else if item is not actually required, rework args or make static.
+   *
    * @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem
    */
   protected $item;
-
-  /**
-   * The repeat rule object.
-   *
-   * @var \Drupal\date_recur\DateRecurRRule
-   */
-  protected $rruleObject;
 
   /**
    * Whether this is a repeating date.
@@ -57,14 +59,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   protected $isRecurring;
 
   /**
-   * The cache table name.
-   *
-   * @var string
-   */
-  protected $tableName;
-
-  /**
-   * Construct a new DefaultDateRecurOccurrenceHandler.
+   * Construct a new DateRecurRlOccurrenceHandler.
    *
    * @param array $configuration
    *   A configuration array containing information about the plugin instance.
@@ -98,38 +93,32 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
    * {@inheritdoc}
    */
   public function init(DateRecurItem $item) {
+    // @todo remove init and move to configuration?
     $this->item = $item;
-    if (!empty($item->rrule)) {
-      $startDate = DateRecurUtility::toPhpDateTime($item->start_date);
-      $startDateEnd = DateRecurUtility::toPhpDateTime($item->end_date);
-      // Set the timezone to the same as the source timezone for convenience.
-      $tz = new \DateTimeZone($item->timezone);
-      $startDate->setTimezone($tz);
-      $startDateEnd->setTimezone($tz);
-      $this->isRecurring = TRUE;
-      $this->rruleObject = new DateRecurRRule($item->rrule, $startDate, $startDateEnd);
-    }
-    else {
-      $this->isRecurring = FALSE;
-    }
-    $this->tableName = $this->getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
+    $this->isRecurring = !empty($item->rrule);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getOccurrencesForDisplay($start = NULL, $end = NULL, $num = NULL) {
-    if (empty($this->item) || !$this->isRecurring) {
-      return [];
+  public function getHelper() {
+    if (isset($this->helper)) {
+      return $this->helper;
     }
-    return $this->rruleObject->getOccurrences($start, $end, $num);
-  }
 
-  /**
-   * @inheritdoc
-   */
-  public function getOccurrencesForComputedProperty() {
-    return $this->getOccurrencesForDisplay();
+    if (!isset($this->item)) {
+      throw new \Exception('Field item not set.');
+    }
+
+    // Set the timezone to the same as the source timezone for convenience.
+    $tz = new \DateTimeZone($this->item->timezone);
+    $startDate = DateRecurUtility::toPhpDateTime($this->item->start_date);
+    $startDateEnd = DateRecurUtility::toPhpDateTime($this->item->end_date);
+    $startDate->setTimezone($tz);
+    $startDateEnd->setTimezone($tz);
+    $this->isRecurring = TRUE;
+    $this->helper = RlHelper::createInstance($this->item->rrule, $startDate, $startDateEnd);
+    return $this->helper;
   }
 
   /**
@@ -139,22 +128,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
     if (empty($this->item) || !$this->isRecurring) {
       return '';
     }
-    return $this->rruleObject->humanReadable();
-  }
-
-  public function getWeekdays() {
-    return $this->rruleObject->getWeekdays();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function isInfinite() {
-    // @todo test either outcome.
-    if (empty($this->item) || !$this->isRecurring) {
-      return FALSE;
-    }
-    return (bool) $this->rruleObject->isInfinite();
+    return $this->getHelper()->getRlRuleset()->humanReadable();
   }
 
   /**
@@ -168,6 +142,8 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
    * {@inheritdoc}
    */
   public function onSave($update, $field_delta) {
+    $tableName = $this::getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
+
     $entity_id = $this->item->getEntity()->id();
     $field_name = $this->item->getFieldDefinition()->getName();
 
@@ -178,7 +154,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
     }
 
     if ($update) {
-      $this->database->delete($this->tableName)
+      $this->database->delete($tableName)
         ->condition('entity_id', $entity_id)
         ->condition('field_delta', $field_delta)
         ->execute();
@@ -199,7 +175,7 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
       ];
       $delta++;
     }
-    $q = $this->database->insert($this->tableName)->fields($fields);
+    $q = $this->database->insert($tableName)->fields($fields);
     foreach ($rows as $row) {
       $q->values($row);
     }
@@ -207,22 +183,34 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
   }
 
   protected function getOccurrencesForCacheStorage() {
-    // Get storage format from settings.
     $storageFormat = $this->item->getDateStorageFormat();
-
     if (!$this->isRecurring) {
       if (empty($this->item->end_date)) {
         $this->item->end_date = $this->item->start_date;
       }
       return [[
-        'value' => DateRecurRRule::massageDateValueForStorage($this->item->start_date, $storageFormat),
-        'end_value' => DateRecurRRule::massageDateValueForStorage($this->item->end_date, $storageFormat),
+        'value' => LegacyDateRecurRRule::massageDateValueForStorage($this->item->start_date, $storageFormat),
+        'end_value' => LegacyDateRecurRRule::massageDateValueForStorage($this->item->end_date, $storageFormat),
       ]];
     }
     else {
-      $until = new \DateTime();
-      $until->add(new \DateInterval($this->item->getFieldDefinition()->getSetting('precreate')));
-      return $this->rruleObject->getOccurrencesForCacheStorage($until, $storageFormat);
+      if ($this->getHelper()->isInfinite()) {
+        $until = (new \DateTime('now'))
+          ->add(new \DateInterval($this->item->getFieldDefinition()->getSetting('precreate')));
+      }
+      else {
+        $until = NULL;
+      }
+
+      $occurrences = $this->getHelper()->getOccurrences(NULL, $until);
+      return array_map(
+        function (DateRange $occurrence) use ($storageFormat) {
+          return [
+            'value' => LegacyDateRecurRRule::massageDateValueForStorage($occurrence->getStart(), $storageFormat),
+            'end_value' => LegacyDateRecurRRule::massageDateValueForStorage($occurrence->getEnd(), $storageFormat),
+          ];
+        }, $occurrences
+      );
     }
 
   }
@@ -244,7 +232,8 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
    * {@inheritdoc}
    */
   public function onSaveMaxDelta($field_delta) {
-    $q = $this->database->delete($this->tableName);
+    $tableName = $this::getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
+    $q = $this->database->delete($tableName);
     $q->condition('entity_id', $this->item->getEntity()->id());
     $q->condition('revision_id', $this->item->getEntity()->getRevisionId());
     $q->condition('field_delta', $field_delta, '>');
@@ -290,7 +279,10 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
    * {@inheritdoc}
    */
   public function onFieldDelete(FieldStorageDefinitionInterface $fieldDefinition) {
-    $this->dropOccurrenceTable($fieldDefinition);
+    $tableName = $this->getOccurrenceCacheStorageTableName($fieldDefinition);
+    $this->database
+      ->schema()
+      ->dropTable($tableName);
   }
 
   /**
@@ -308,18 +300,6 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
     $spec['description'] = 'Date recur cache for ' . $entity_type . '.' . $field_name;
     $schema = $this->database->schema();
     $schema->createTable($table_name, $spec);
-  }
-
-  /**
-   * Drops an occurrence table.
-   *
-   * @param \Drupal\Core\Field\FieldStorageDefinitionInterface $fieldDefinition
-   *   The field definition.
-   */
-  protected function dropOccurrenceTable(FieldStorageDefinitionInterface $fieldDefinition) {
-    $tableName = $this->getOccurrenceCacheStorageTableName($fieldDefinition);
-    $schema = $this->database->schema();
-    $schema->dropTable($tableName);
   }
 
   public function getOccurrenceTableSchema(FieldStorageDefinitionInterface $field) {
@@ -451,16 +431,6 @@ class DefaultDateRecurOccurrenceHandler extends PluginBase implements DateRecurO
       ->setClass(DateRecurOccurrencesComputed::class);
 
     return $occurrences;
-  }
-
-  /**
-   * Get the RRULE object.
-   *
-   * @return \Drupal\date_recur\DateRecurRRule
-   *   The RRULE object.
-   */
-  public function getRruleObject() {
-    return $this->rruleObject;
   }
 
 }

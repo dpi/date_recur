@@ -73,8 +73,8 @@ class DateRecurFieldTest extends KernelTestBase {
     /** @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $item */
     $item = $entity->get('foo')[0];
     $occurrences = $item->getOccurrenceHandler()
-      ->getRruleObject()
-      ->getAllOccurrences(NULL, NULL, 1);
+      ->getHelper()
+      ->getOccurrences(NULL, NULL, 1);
 
     // Christmas island is UTC+7, so start time will be 6am.
     $assertDateStart = new \DateTime('6am 2014-06-16', $tzChristmas);

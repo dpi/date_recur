@@ -30,7 +30,7 @@ class DateRecurTest extends KernelTestBase {
   /**
    * Tests adding a field, setting values, reading occurrences.
    */
-  public function testGetOccurrencesForDisplay() {
+  public function testGetOccurrences() {
     $field_storage = FieldStorageConfig::create([
       'entity_type' => 'entity_test',
       'field_name' => 'abc',
@@ -63,11 +63,12 @@ class DateRecurTest extends KernelTestBase {
     /** @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $item */
     $item = $entity->abc[0];
     $occurrences = $item->getOccurrenceHandler()
-      ->getOccurrencesForDisplay(NULL, NULL, 2);
-    $this->assertEquals('Mon, 16 Jun 2014 09:00:00 +1000', $occurrences[0]['value']->format('r'));
-    $this->assertEquals('Mon, 16 Jun 2014 17:00:00 +1000', $occurrences[0]['end_value']->format('r'));
-    $this->assertEquals('Tue, 17 Jun 2014 09:00:00 +1000', $occurrences[1]['value']->format('r'));
-    $this->assertEquals('Tue, 17 Jun 2014 17:00:00 +1000', $occurrences[1]['end_value']->format('r'));
+      ->getHelper()
+      ->getOccurrences(NULL, NULL, 2);
+    $this->assertEquals('Mon, 16 Jun 2014 09:00:00 +1000', $occurrences[0]->getStart()->format('r'));
+    $this->assertEquals('Mon, 16 Jun 2014 17:00:00 +1000', $occurrences[0]->getEnd()->format('r'));
+    $this->assertEquals('Tue, 17 Jun 2014 09:00:00 +1000', $occurrences[1]->getStart()->format('r'));
+    $this->assertEquals('Tue, 17 Jun 2014 17:00:00 +1000', $occurrences[1]->getEnd()->format('r'));
   }
 
 }
