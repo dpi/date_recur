@@ -158,7 +158,8 @@ class DateRecurItem extends DateRangeItem {
    */
   public function getDateStorageFormat() {
     // @todo tests.
-    return $this->getSetting('daterange_type') == static::DATETIME_TYPE_DATETIME ? static::DATETIME_STORAGE_FORMAT : static::DATE_STORAGE_FORMAT;
+    $k = $this->getSetting('daterange_type');
+    return $this->getSetting('daterange_type') == static::DATETIME_TYPE_DATE ? static::DATE_STORAGE_FORMAT : static::DATETIME_STORAGE_FORMAT;
   }
 
   /**

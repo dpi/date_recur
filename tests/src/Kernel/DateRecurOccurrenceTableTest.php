@@ -4,6 +4,7 @@ namespace Drupal\Tests\date_recur\Kernel;
 
 use Drupal\date_recur\Plugin\DateRecurOccurrenceHandler\DateRecurRlOccurrenceHandler;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
+use Drupal\date_recur_entity_test\Entity\DrEntityTest;
 use Drupal\entity_test\Entity\EntityTest;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\field\Entity\FieldStorageConfig;
@@ -24,12 +25,14 @@ class DateRecurOccurrenceTableTest extends KernelTestBase {
   protected function setUp() {
     parent::setUp();
     $this->installEntitySchema('entity_test');
+    $this->installEntitySchema('dr_entity_test');
   }
 
   /**
    * {@inheritdoc}
    */
   protected static $modules = [
+    'date_recur_entity_test',
     'entity_test',
     'datetime',
     'datetime_range',
@@ -138,7 +141,7 @@ class DateRecurOccurrenceTableTest extends KernelTestBase {
   /**
    * Test table name generator.
    */
-  public function testGetOccurrenceCacheStorageTableName() {
+  public function testGetOccurrenceTableName() {
     $fieldStorage = FieldStorageConfig::create([
       'entity_type' => 'entity_test',
       'field_name' => 'foo',
@@ -146,8 +149,116 @@ class DateRecurOccurrenceTableTest extends KernelTestBase {
     ]);
     $actual = DateRecurRlOccurrenceHandler::getOccurrenceCacheStorageTableName($fieldStorage);
     $this->assertEquals('date_recur__entity_test__foo', $actual);
+
+    $baseFields = $entityTypeDefinition = $this->container->get('entity_field.manager')
+      ->getBaseFieldDefinitions('dr_entity_test');
+    $actual = DateRecurRlOccurrenceHandler::getOccurrenceCacheStorageTableName($baseFields['dr']);
+    $this->assertEquals('date_recur__dr_entity_test__dr', $actual);
   }
 
-  // @Todo test the actual values! not just a count.
+  /**
+   * Tests values of occurrence table.
+   */
+  public function testOccurrenceTableValues() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      [
+        'value' => '2014-06-17T23:00:00',
+        'end_value' => '2014-06-18T07:00:00',
+        'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=5',
+        'infinite' => '0',
+        'timezone' => 'Australia/Sydney',
+      ],
+      [
+        'value' => '2015-07-17T02:00:00',
+        'end_value' => '2015-07-18T10:00:00',
+        'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=2',
+        'infinite' => '0',
+        'timezone' => 'Indian/Cocos',
+      ],
+    ];
+    $entity->save();
+
+    $tableName = 'date_recur__dr_entity_test__dr';
+    $fields = [
+      'entity_id',
+      'revision_id',
+      'field_delta',
+      'delta',
+      'dr_value',
+      'dr_end_value',
+    ];
+    $results = $this->container->get('database')
+      ->select($tableName, 'occurences')
+      ->fields('occurences', $fields)
+      ->execute()
+      ->fetchAll();
+    $this->assertCount(7, $results);
+
+    $assertExpected = [
+      [
+        'entity_id' => $entity->id(),
+        'revision_id' => $entity->getRevisionId(),
+        'field_delta' => 0,
+        'delta' => 0,
+        'dr_value' => '2014-06-17T23:00:00',
+        'dr_end_value' => '2014-06-18T07:00:00',
+      ],
+      [
+        'entity_id' => $entity->id(),
+        'revision_id' => $entity->getRevisionId(),
+        'field_delta' => 0,
+        'delta' => 1,
+        'dr_value' => '2014-06-18T23:00:00',
+        'dr_end_value' => '2014-06-19T07:00:00',
+      ],
+      [
+        'entity_id' => $entity->id(),
+        'revision_id' => $entity->getRevisionId(),
+        'field_delta' => 0,
+        'delta' => 2,
+        'dr_value' => '2014-06-19T23:00:00',
+        'dr_end_value' => '2014-06-20T07:00:00',
+      ],
+      [
+        'entity_id' => $entity->id(),
+        'revision_id' => $entity->getRevisionId(),
+        'field_delta' => 0,
+        'delta' => 3,
+        'dr_value' => '2014-06-22T23:00:00',
+        'dr_end_value' => '2014-06-23T07:00:00',
+      ],
+      [
+        'entity_id' => $entity->id(),
+        'revision_id' => $entity->getRevisionId(),
+        'field_delta' => 0,
+        'delta' => 4,
+        'dr_value' => '2014-06-23T23:00:00',
+        'dr_end_value' => '2014-06-24T07:00:00',
+      ],
+      [
+        'entity_id' => $entity->id(),
+        'revision_id' => $entity->getRevisionId(),
+        'field_delta' => '1',
+        'delta' => '0',
+        'dr_value' => '2015-07-17T02:00:00',
+        'dr_end_value' => '2015-07-18T10:00:00',
+      ],
+      [
+        'entity_id' => $entity->id(),
+        'revision_id' => $entity->getRevisionId(),
+        'field_delta' => '1',
+        'delta' => '1',
+        'dr_value' => '2015-07-20T02:00:00',
+        'dr_end_value' => '2015-07-21T10:00:00',
+      ],
+    ];
+
+    foreach ($results as $actualIndex => $actualValues) {
+      $expectedValues = $assertExpected[$actualIndex];
+      $actualValues = (array) $actualValues;
+      $this->assertEquals($expectedValues, $actualValues);
+    }
+  }
 
 }

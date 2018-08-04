@@ -5,6 +5,7 @@ namespace Drupal\date_recur_entity_test\Entity;
 use Drupal\Core\Entity\EntityTypeInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\entity_test\Entity\EntityTest;
 
 /**
@@ -57,7 +58,11 @@ class DrEntityTest extends EntityTest {
     $fields['dr'] = BaseFieldDefinition::create('date_recur')
       ->setLabel(t('Rule'))
       ->setDisplayConfigurable('form', TRUE)
-      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED);
+      ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
+      ->setSettings([
+        'datetime_type' => DateRecurItem::DATETIME_TYPE_DATETIME,
+        'occurrence_handler_plugin' => 'date_recur_occurrence_handler',
+      ]);
 
     return $fields;
   }

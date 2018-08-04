@@ -3,6 +3,7 @@
 namespace Drupal\date_recur\Plugin\DateRecurOccurrenceHandler;
 
 use Drupal\Core\Database\Connection;
+use Drupal\Core\Entity\RevisionableInterface;
 use Drupal\Core\Plugin\PluginBase;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\ListDataDefinition;
@@ -144,14 +145,10 @@ class DateRecurRlOccurrenceHandler extends PluginBase implements DateRecurOccurr
   public function onSave($update, $field_delta) {
     $tableName = $this::getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
 
-    $entity_id = $this->item->getEntity()->id();
+    $entity = $this->item->getEntity();
+    $entityIsRevisionable = $entity instanceof RevisionableInterface;
+    $entity_id = $entity->id();
     $field_name = $this->item->getFieldDefinition()->getName();
-
-    if ($this->item->getEntity()->getRevisionId()) {
-      $revision_id = $this->item->getEntity()->getRevisionId();
-    } else {
-      $revision_id = $this->item->getEntity()->id();
-    }
 
     if ($update) {
       $this->database->delete($tableName)
@@ -160,19 +157,33 @@ class DateRecurRlOccurrenceHandler extends PluginBase implements DateRecurOccurr
         ->execute();
     }
 
-    $fields = ['entity_id', 'revision_id', 'field_delta', $field_name . '_value', $field_name . '_end_value', 'delta'];
+    $fields = [
+      'entity_id',
+      'field_delta',
+      $field_name . '_value',
+      $field_name . '_end_value',
+      'delta',
+    ];
+    if ($entityIsRevisionable) {
+      $fields[] = 'revision_id';
+    }
+
     $dates = $this->getOccurrencesForCacheStorage();
     $delta = 0;
     $rows = [];
     foreach ($dates as $date) {
-      $rows[] = [
+      $row = [
         'entity_id' => $entity_id,
-        'revision_id' => $revision_id,
         'field_delta' => $field_delta,
         $field_name . '_value' => $date['value'],
         $field_name . '_end_value' => $date['end_value'],
         'delta' => $delta,
       ];
+      if ($entityIsRevisionable) {
+        /** @var \Drupal\Core\Entity\RevisionableInterface $entity */
+        $row['revision_id'] = $entity->getRevisionId();
+      }
+      $rows[] = $row;
       $delta++;
     }
     $q = $this->database->insert($tableName)->fields($fields);
@@ -234,8 +245,11 @@ class DateRecurRlOccurrenceHandler extends PluginBase implements DateRecurOccurr
   public function onSaveMaxDelta($field_delta) {
     $tableName = $this::getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
     $q = $this->database->delete($tableName);
-    $q->condition('entity_id', $this->item->getEntity()->id());
-    $q->condition('revision_id', $this->item->getEntity()->getRevisionId());
+    $entity = $this->item->getEntity();
+    $q->condition('entity_id', $entity->id());
+    if ($entity instanceof RevisionableInterface) {
+      $q->condition('revision_id', $entity->getRevisionId());
+    }
     $q->condition('field_delta', $field_delta, '>');
     $q->execute();
   }
@@ -256,8 +270,11 @@ class DateRecurRlOccurrenceHandler extends PluginBase implements DateRecurOccurr
   public function onDeleteRevision() {
     $table_name = $this->getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
     $q = $this->database->delete($table_name);
-    $q->condition('entity_id', $this->item->getEntity()->id());
-    $q->condition('revision_id', $this->item->getEntity()->getRevisionId());
+    $entity = $this->item->getEntity();
+    $q->condition('entity_id', $entity->id());
+    if ($entity instanceof RevisionableInterface) {
+      $q->condition('revision_id', $entity->getRevisionId());
+    }
     $q->execute();
   }
 
@@ -292,58 +309,57 @@ class DateRecurRlOccurrenceHandler extends PluginBase implements DateRecurOccurr
    *   The field definition.
    */
   protected function createOccurrenceTable(FieldStorageDefinitionInterface $fieldDefinition) {
-    $entity_type = $fieldDefinition->getTargetEntityTypeId();
-    $field_name = $fieldDefinition->getName();
-    $table_name = $this->getOccurrenceCacheStorageTableName($fieldDefinition);
+    $fields['entity_id'] = [
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0,
+      'description' => "Entity id",
+    ];
 
-    $spec = $this->getOccurrenceTableSchema($fieldDefinition);
-    $spec['description'] = 'Date recur cache for ' . $entity_type . '.' . $field_name;
-    $schema = $this->database->schema();
-    $schema->createTable($table_name, $spec);
-  }
+    if ($fieldDefinition->isRevisionable()) {
+      $fields['revision_id'] = [
+        'type' => 'int',
+        'not null' => FALSE,
+        'default' => NULL,
+        'description' => "Entity revision id",
+      ];
+    }
 
-  public function getOccurrenceTableSchema(FieldStorageDefinitionInterface $field) {
-    $field_name = $field->getName();
+    $fields['field_delta'] = [
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0,
+    ];
+    $fields['delta'] = [
+      'type' => 'int',
+      'not null' => TRUE,
+      'default' => 0,
+    ];
+
+    $fieldName = $fieldDefinition->getName();
+    $fields[$fieldName . '_value'] = [
+      'description' => 'Start date',
+      'type' => 'varchar',
+      'length' => 20,
+    ];
+    $fields[$fieldName . '_end_value'] = [
+      'description' => 'End date',
+      'type' => 'varchar',
+      'length' => 20,
+    ];
+
     $schema = [
-      'fields' => [
-        'entity_id' => [
-          'type' => 'int',
-          'not null' => TRUE,
-          'default' => 0,
-          'description' => "Entity id",
-        ],
-        'revision_id' => [
-          'type' => 'int',
-          'not null' => TRUE,
-          'default' => 0,
-          'description' => "Entity revision id",
-        ],
-        'field_delta' => [
-          'type' => 'int',
-          'not null' => TRUE,
-          'default' => 0,
-        ],
-        'delta' => [
-          'type' => 'int',
-          'not null' => TRUE,
-          'default' => 0,
-        ],
-        $field_name . '_value' => [
-          'description' => 'Start date',
-          'type' => 'varchar',
-          'length' => 20,
-        ],
-        $field_name . '_end_value' => [
-          'description' => 'End date',
-          'type' => 'varchar',
-          'length' => 20,
-        ],
-      ],
+      'description' => sprintf('Date recur cache for %s.%s', $fieldDefinition->getTargetEntityTypeId(), $fieldName),
+      'fields' => $fields,
       'indexes' => [
-        'value' => ['entity_id', $field_name . '_value'],
+        'value' => ['entity_id', $fieldName . '_value'],
       ],
     ];
-    return $schema;
+
+    $table_name = $this->getOccurrenceCacheStorageTableName($fieldDefinition);
+    $this->database
+      ->schema()
+      ->createTable($table_name, $schema);
   }
 
   /**
