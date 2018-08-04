@@ -7,7 +7,6 @@ use Drupal\Core\Language\Language;
 use Drupal\Core\Language\LanguageManagerInterface;
 use Drupal\date_recur\DateRange;
 use Drupal\date_recur\DateRecurHelper;
-use Drupal\date_recur\DateRecurUtility;
 use Drupal\Tests\UnitTestCase;
 
 /**
