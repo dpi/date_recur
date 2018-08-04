@@ -6,3 +6,9 @@ services:
   date_recur.entity_hooks:
     class: Drupal\date_recur\DateRecurEntityHooks
     arguments: ['@plugin.manager.date_recur_occurrence_handler']
+
+  date_recur.entity_schema_subscriber:
+    class: Drupal\date_recur\EventSubscriber\DateRecurEntitySchemaSubscriber
+    arguments: ['@entity_field.manager', '@plugin.manager.date_recur_occurrence_handler']
+    tags:
+    - { name: 'event_subscriber' }
