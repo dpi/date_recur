@@ -58,6 +58,7 @@ class DrEntityTest extends EntityTest {
     $fields['dr'] = BaseFieldDefinition::create('date_recur')
       ->setLabel(t('Rule'))
       ->setDisplayConfigurable('form', TRUE)
+      ->setDisplayConfigurable('view', TRUE)
       ->setCardinality(FieldStorageDefinitionInterface::CARDINALITY_UNLIMITED)
       ->setSettings([
         'datetime_type' => DateRecurItem::DATETIME_TYPE_DATETIME,
