@@ -2,6 +2,7 @@
 
 namespace Drupal\date_recur\Plugin\Field\FieldFormatter;
 
+use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
@@ -21,31 +22,23 @@ use Drupal\datetime_range\Plugin\Field\FieldFormatter\DateRangeDefaultFormatter;
  */
 class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
 
-  /** @var int */
-  protected $occurrenceCounter;
-
   /**
    * {@inheritdoc}
    */
   public static function defaultSettings() {
     return [
-      // Implement default settings.
+      // Whether the human readable string should be shown.
       'show_rrule' => TRUE,
+      // Show number of occurrences.
       'show_next' => 5,
-      'occurrence_format_type' => 'medium',
-      'same_end_date_format_type' => 'medium',
+      // Whether number of occurrences should be per item or in total.
       'count_per_item' => TRUE,
+      // Date format for occurrences.
+      // @todo add dependencies.
+      'occurrence_format_type' => 'medium',
+      // Date format for end date, if same day as start date.
+      'same_end_date_format_type' => 'medium',
     ] + parent::defaultSettings();
-  }
-
-  protected function showNextOptions() {
-    // This cannot work for infinite fields.
-    // $next_options[-1] = $this->t('All');
-    $next_options[0] = $this->t('None');
-    for ($i = 1; $i <= 20; $i++) {
-      $next_options[$i] = $i;
-    }
-    return $next_options;
   }
 
   /**
@@ -53,31 +46,83 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
    */
   public function settingsForm(array $form, FormStateInterface $form_state) {
     $form = parent::settingsForm($form, $form_state);
+
     $form['show_rrule'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Show repeat rule'),
       '#default_value' => $this->getSetting('show_rrule'),
     ];
-    $form['show_next'] = [
-      '#type' => 'select',
-      '#options' => $this->showNextOptions(),
-      '#title' => $this->t('Show next occurrences'),
-      '#default_value' => $this->getSetting('show_next'),
+
+    $form['occurrences'] = [
+      '#type' => 'container',
+      '#attributes' => ['class' => ['container-inline']],
+      '#tree' => FALSE,
     ];
-    $form['count_per_item'] = [
-      '#type' => 'checkbox',
-      '#title' => $this->t('Limit occurrences per field item'),
-      '#default_value' => $this->getSetting('count_per_item'),
-      '#description' => $this->t('If disabled, the number of occurrences shown is limited across all field items.')
+
+    $form['occurrences']['show_next'] = [
+      '#field_prefix' => $this->t('Show'),
+      '#field_suffix' => $this->t('occurrences'),
+      '#type' => 'number',
+      '#min' => 0,
+      '#default_value' => $this->getSetting('show_next'),
+      '#attributes' => ['size' => 4],
+      '#element_validate' => [[static::class, 'validateSettingsShowNext']],
+    ];
+
+    $form['occurrences']['count_per_item'] = [
+      '#type' => 'select',
+      '#options' => [
+        'per_item' => $this->t('per field item'),
+        'all_items' => $this->t('across all field items'),
+      ],
+      '#default_value' => $this->getSetting('count_per_item') ? 'per_item' : 'all_items',
+      '#element_validate' => [[static::class, 'validateSettingsCountPerItem']],
     ];
 
     $form['occurrence_format_type'] = $form['format_type'];
-    $form['occurrence_format_type']['#title'] .=  ' ' . t('(Occurrences)');
+    $form['occurrence_format_type']['#title'] = $this->t('Date format for occurrences');
     $form['occurrence_format_type']['#default_value'] = $this->getSetting('occurrence_format_type');
     $form['same_end_date_format_type'] = $form['format_type'];
-    $form['same_end_date_format_type']['#title'] .=  ' ' . t('(End date if same day as start date)');
+    $form['same_end_date_format_type']['#title'] = $this->t('End date format for occurrences (if same day as start date)');
     $form['same_end_date_format_type']['#default_value'] = $this->getSetting('same_end_date_format_type');
     return $form;
+  }
+
+  /**
+   * Validation callback for count_per_item.
+   *
+   * @param array $element
+   *   The element being processed.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   * @param array $complete_form
+   *   The complete form structure.
+   */
+  public static function validateSettingsCountPerItem(array &$element, FormStateInterface $form_state, array &$complete_form) {
+    $countPerItem = $element['#value'] == 'per_item';
+    $arrayParents = array_slice($element['#array_parents'], 0, -2);
+    $formatterForm = NestedArray::getValue($complete_form, $arrayParents);
+    $parents = $formatterForm['#parents'];
+    $parents[] = 'count_per_item';
+    $form_state->setValue($parents, $countPerItem);
+  }
+
+  /**
+   * Validation callback for show_next.
+   *
+   * @param array $element
+   *   The element being processed.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   * @param array $complete_form
+   *   The complete form structure.
+   */
+  public static function validateSettingsShowNext(array &$element, FormStateInterface $form_state, array &$complete_form) {
+    $arrayParents = array_slice($element['#array_parents'], 0, -2);
+    $formatterForm = NestedArray::getValue($complete_form, $arrayParents);
+    $parents = $formatterForm['#parents'];
+    $parents[] = 'show_next';
+    $form_state->setValue($parents, $element['#value']);
   }
 
   /**
@@ -85,22 +130,30 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
    */
   public function settingsSummary() {
     $summary = parent::settingsSummary();
-    $summary[] = $this->t('Show repeat rule') . ': ' . ($this->getSetting('show_rrule') ? $this->t('Yes') : $this->t('No'));
-    $summary[] = $this->t('Show next occurrences') . ': ' . $this->showNextOptions()[$this->getSetting('show_next')];
+    if ($this->getSetting('show_rrule')) {
+      $summary[] = $this->t('Showing repeat rule');
+    }
+
+    $countPerItem = $this->getSetting('count_per_item');
+    $showOccurencesCount = $this->getSetting('show_next');
+    if ($showOccurencesCount > 0) {
+      $summary[] = $this->formatPlural(
+        $showOccurencesCount,
+        'Show maximum of @count occurrence @per',
+        'Show maximum of @count occurrences @per',
+        ['@per' => $countPerItem ? $this->t('per field item') : $this->t('across all field items')]
+      );
+    }
+
     $date = new DrupalDateTime();
     $date->_dateRecurIsOccurrence = TRUE;
-    $summary[] = t('Occurrence format: @display', ['@display' => $this->formatDate($date)]);
+    $summary[] = $this->t('Occurrence format: @display', [
+      '@display' => $this->formatDate($date),
+    ]);
     return $summary;
   }
 
-  protected function buildDateRangeValue($start_date, $end_date, $isOccurrence = FALSE) {
-    // Protection. @todo: Find out why sometimes a \DateTime arrives.
-    if ($start_date instanceof \DateTime) {
-      $start_date = DrupalDateTime::createFromDateTime($start_date);
-    }
-    if ($end_date instanceof \DateTime) {
-      $end_date = DrupalDateTime::createFromDateTime($end_date);
-    }
+  protected function buildDateRangeValue(DrupalDateTime $start_date, DrupalDateTime $end_date, $isOccurrence = FALSE) {
     if ($isOccurrence) {
       $start_date->_dateRecurIsOccurrence = $end_date->_dateRecurIsOccurrence = TRUE;
     }
@@ -141,9 +194,16 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
   public function viewElements(FieldItemListInterface $items, $langcode) {
     $elements = [];
 
-    $this->occurrenceCounter = 0;
+    $isSharedMax = !$this->getSetting('count_per_item');
+    $maxOccurrences = (int) $this->getSetting('show_next');
     foreach ($items as $delta => $item) {
-      $elements[$delta] = $this->viewValue($item);
+      $elements[$delta] = $this->viewValue($item, $maxOccurrences);
+
+      if ($isSharedMax) {
+        // Subtract the occurrences found in this item if occurrence count is
+        // shared across all field items.
+        $maxOccurrences -= count($elements[$delta]['#occurrences']);
+      }
     }
 
     return $elements;
@@ -158,9 +218,9 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
    * @return string
    *   The textual output generated.
    */
-  protected function viewValue(DateRecurItem $item) {
+  protected function viewValue(DateRecurItem $item, $maxOccurrences) {
     $build = [
-      '#theme' => 'date_recur_default_formatter'
+      '#theme' => 'date_recur_default_formatter',
     ];
 
     if (empty($item->end_date)) {
@@ -179,7 +239,7 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
       $build['#repeatrule'] = $item->getOccurrenceHandler()->humanReadable();
     }
 
-    $build['#occurrences'] = $this->viewOccurrences($item);
+    $build['#occurrences'] = $this->viewOccurrences($item, $maxOccurrences);
 
     if (!empty($item->_attributes)) {
       $build += $item->_attributes;
@@ -191,28 +251,28 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
     return $build;
   }
 
-  protected function viewOccurrences(DateRecurItem $item) {
+  protected function viewOccurrences(DateRecurItem $item, $maxOccurrences) {
+    if ($maxOccurrences <= 0) {
+      return [];
+    }
+
     $build = [];
     $start = new \DateTime('now');
-
-    $count = $this->getSetting('show_next');
-    if (!$this->getSetting('count_per_item')) {
-      $count = $count - $this->occurrenceCounter;
-    }
-    if ($count <= 0) {
-      return $build;
-    }
 
     $occurrences = $item->getOccurrenceHandler()
       ->getHelper()
       // @todo change to generator.
-      ->getOccurrences($start, NULL, $count);
+      ->getOccurrences($start, NULL, $maxOccurrences);
     foreach ($occurrences as $occurrence) {
-      if (!empty($occurrence['value'])) {
-        $build[] = $this->buildDateRangeValue($occurrence['value'], $occurrence['end_value'], TRUE);
-      }
+      $startDate = DrupalDateTime::createFromDateTime($occurrence->getStart());
+      $endDate = DrupalDateTime::createFromDateTime($occurrence->getEnd());
+      $build[] = $this->buildDateRangeValue(
+        $startDate,
+        $endDate,
+        TRUE
+      );
     }
-    $this->occurrenceCounter += count($occurrences);
+
     return $build;
   }
 
