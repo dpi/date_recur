@@ -7,7 +7,6 @@
 
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\field\FieldStorageConfigInterface;
-use Zend\Stdlib\Exception\InvalidArgumentException;
 
 /**
  * Implements hook_theme().
@@ -33,9 +32,6 @@ function date_recur_theme($existing, $type, $theme, $path) {
  * @internal
  */
 function date_recur_create_occurrence_handler(FieldStorageDefinitionInterface $field) {
-  if ($field->getType() != 'date_recur') {
-    throw new InvalidArgumentException("Expected field of type date_recur.");
-  }
   $pluginName = $field->getSetting('occurrence_handler_plugin');
   /** @var \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerManagerInterface $manager */
   $manager = \Drupal::service('plugin.manager.date_recur_occurrence_handler');

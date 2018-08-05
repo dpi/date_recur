@@ -4,12 +4,21 @@ namespace Drupal\date_recur;
 
 use Drupal\Component\Plugin\PluginManagerInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
+use Drupal\Core\TypedData\TypedDataManagerInterface;
+use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\field\FieldStorageConfigInterface;
 
 /**
  * Reacts to Drupal entity hooks.
  */
 class DateRecurEntityHooks {
+
+  /**
+   * Manages config schema type plugins.
+   *
+   * @var \Drupal\Core\TypedData\TypedDataManagerInterface
+   */
+  protected $typedDataManager;
 
   /**
    * Provides the Date recur occurrence handler plugin manager.
@@ -21,10 +30,13 @@ class DateRecurEntityHooks {
   /**
    * Constructs a new DateRecurEntityHooks.
    *
+   * @param \Drupal\Core\TypedData\TypedDataManagerInterface $typedDataManager
+   *   Manages config schema type plugins.
    * @param \Drupal\Component\Plugin\PluginManagerInterface $dateRecurOccurrenceManager
    *   Provides the Date recur occurrence handler plugin manager.
    */
-  public function __construct(PluginManagerInterface $dateRecurOccurrenceManager) {
+  public function __construct(TypedDataManagerInterface $typedDataManager, PluginManagerInterface $dateRecurOccurrenceManager) {
+    $this->typedDataManager = $typedDataManager;
     $this->dateRecurOccurrenceManager = $dateRecurOccurrenceManager;
   }
 
@@ -40,11 +52,15 @@ class DateRecurEntityHooks {
    *   Throws exceptions.
    */
   public function fieldStorageConfigInsert(FieldStorageConfigInterface $fieldStorageConfig) {
-    if ($fieldStorageConfig->getType() != 'date_recur') {
-      return;
+    $typeDefinition = $this->typedDataManager
+      ->getDefinition('field_item:' . $fieldStorageConfig->getType());
+    $class = $typeDefinition['class'];
+
+    // Is date_recur or a subclass.
+    if (($class == DateRecurItem::class) || (new \ReflectionClass($class))->isSubclassOf(DateRecurItem::class)) {
+      $this->getInstanceFromDefinition($fieldStorageConfig)
+        ->onFieldCreate($fieldStorageConfig);
     }
-    $this->getInstanceFromDefinition($fieldStorageConfig)
-      ->onFieldCreate($fieldStorageConfig);
   }
 
   /**
@@ -59,11 +75,15 @@ class DateRecurEntityHooks {
    * @see \date_recur_field_storage_config_update()
    */
   public function fieldStorageConfigUpdate(FieldStorageConfigInterface $fieldStorageConfig) {
-    if ($fieldStorageConfig->getType() != 'date_recur') {
-      return;
+    $typeDefinition = $this->typedDataManager
+      ->getDefinition('field_item:' . $fieldStorageConfig->getType());
+    $class = $typeDefinition['class'];
+
+    // Is date_recur or a subclass.
+    if (($class == DateRecurItem::class) || (new \ReflectionClass($class))->isSubclassOf(DateRecurItem::class)) {
+      $this->getInstanceFromDefinition($fieldStorageConfig)
+        ->onFieldUpdate($fieldStorageConfig);
     }
-    $this->getInstanceFromDefinition($fieldStorageConfig)
-      ->onFieldUpdate($fieldStorageConfig);
   }
 
   /**
@@ -78,11 +98,15 @@ class DateRecurEntityHooks {
    * @see \date_recur_field_storage_config_delete()
    */
   public function fieldStorageConfigDelete(FieldStorageConfigInterface $fieldStorageConfig) {
-    if ($fieldStorageConfig->getType() != 'date_recur') {
-      return;
+    $typeDefinition = $this->typedDataManager
+      ->getDefinition('field_item:' . $fieldStorageConfig->getType());
+    $class = $typeDefinition['class'];
+
+    // Is date_recur or a subclass.
+    if (($class == DateRecurItem::class) || (new \ReflectionClass($class))->isSubclassOf(DateRecurItem::class)) {
+      $this->getInstanceFromDefinition($fieldStorageConfig)
+        ->onFieldDelete($fieldStorageConfig);
     }
-    $this->getInstanceFromDefinition($fieldStorageConfig)
-      ->onFieldDelete($fieldStorageConfig);
   }
 
   /**
@@ -98,9 +122,6 @@ class DateRecurEntityHooks {
    *   If the instance cannot be created, such as if the ID is invalid.
    */
   protected function getInstanceFromDefinition(FieldStorageDefinitionInterface $fieldStorageConfig) {
-    if ($fieldStorageConfig->getType() != 'date_recur') {
-      throw new \InvalidArgumentException("Expected field of type date_recur.");
-    }
     $pluginName = $fieldStorageConfig->getSetting('occurrence_handler_plugin');
     return $this->dateRecurOccurrenceManager->createInstance($pluginName);
   }
