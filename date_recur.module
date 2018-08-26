@@ -15,10 +15,10 @@ function date_recur_theme($existing, $type, $theme, $path) {
   return [
     'date_recur_default_formatter' => [
       'variables' => [
-        'occurrences' => [],
-        'repeatrule' => NULL,
         'date' => NULL,
-        'isRecurring' => FALSE,
+        'interpretation' => NULL,
+        'is_recurring' => FALSE,
+        'occurrences' => [],
       ],
     ],
   ];

@@ -24,22 +24,6 @@ interface DateRecurOccurrenceHandlerInterface extends PluginInspectionInterface 
   public function getHelper();
 
   /**
-   * Does the handler have a recurring date?
-   *
-   * @return bool
-   *   Whether the date is recurring.
-   */
-  public function isRecurring();
-
-  /**
-   * Get a human-readable representation of the repeat rule.
-   *
-   * @return string
-   *   A human-readable representation of the repeat rule.
-   */
-  public function humanReadable();
-
-  /**
    * React when a field item is saved.
    *
    * @param bool $update

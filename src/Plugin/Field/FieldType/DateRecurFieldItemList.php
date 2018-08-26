@@ -12,6 +12,9 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
     parent::postSave($update);
     /** @var DateRecurItem $item */
     foreach ($this as $field_delta => $item) {
+//      if (!$item->isRecurring()) {
+//        continue;
+//      }
       $item->getOccurrenceHandler()->onSave($update, $field_delta);
     }
     if ($update && isset($field_delta)) {
@@ -23,6 +26,9 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
     parent::delete();
     /** @var DateRecurItem $item */
     foreach ($this as $field_delta => $item) {
+//      if (!$item->isRecurring()) {
+//        continue;
+//      }
       $item->getOccurrenceHandler()->onDelete();
     }
   }
@@ -31,6 +37,9 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
     parent::deleteRevision();
     /** @var DateRecurItem $item */
     foreach ($this as $field_delta => $item) {
+//      if (!$item->isRecurring()) {
+//        continue;
+//      }
       $item->getOccurrenceHandler()->onDeleteRevision();
     }
   }
