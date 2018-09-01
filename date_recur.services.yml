@@ -1,4 +1,8 @@
 services:
+  plugin.manager.date_recur_interpreter:
+    class: Drupal\date_recur\Plugin\DateRecurInterpreterManager
+    parent: default_plugin_manager
+
   plugin.manager.date_recur_occurrence_handler:
     class: Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerManager
     parent: default_plugin_manager
