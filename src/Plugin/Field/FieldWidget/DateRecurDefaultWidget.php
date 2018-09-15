@@ -6,6 +6,7 @@ use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\date_recur\DateRecurHelper;
+use Drupal\date_recur\DateRecurUtility;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItem;
 use Drupal\datetime_range\Plugin\Field\FieldWidget\DateRangeDefaultWidget;
 
@@ -116,9 +117,11 @@ class DateRecurDefaultWidget extends DateRangeDefaultWidget {
    *   The complete form structure.
    */
   public function validateRrule(array &$element, FormStateInterface $form_state, array &$complete_form) {
-    if (!empty($element['rrule']['#value']) && $element['value']['#value']['object'] instanceof DrupalDateTime) {
+    $object = $element['value']['#value']['object'];
+    if (!empty($element['rrule']['#value']) && ($object instanceof DrupalDateTime)) {
       try {
-        DateRecurHelper::create($element['rrule']['#value'], $element['value']['#value']['object']);
+        $date = DateRecurUtility::toPhpDateTime($element['value']['#value']['object']);
+        DateRecurHelper::create($element['rrule']['#value'], $date);
       }
       catch (\Exception $e) {
         // @fixme Exceptions shouldnt be exposed, and are not translatable.
@@ -139,7 +142,8 @@ class DateRecurDefaultWidget extends DateRangeDefaultWidget {
       else {
         if (!empty($item['value']) && $item['value'] instanceof DrupalDateTime) {
           try {
-            $rule = DateRecurHelper::create($item['rrule'], $item['value']);
+            $date = DateRecurUtility::toPhpDateTime($item['value']);
+            $rule = DateRecurHelper::create($item['rrule'], $date);
             if ($rule->isInfinite()) {
               $item['infinite'] = 1;
             }

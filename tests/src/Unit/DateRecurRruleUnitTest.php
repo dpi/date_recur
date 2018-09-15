@@ -138,6 +138,7 @@ class DateRecurRruleUnitTest extends UnitTestCase {
    * @deprecated will remove.
    */
   public function testHumanReadable() {
+    //@todo fixme.
     $start = new \DateTime('11pm 7 June 2005', new \DateTimeZone('America/Los_Angeles'));
     $rrule = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;INTERVAL=1';
     $rule = RlHelper::createInstance($rrule, $start);

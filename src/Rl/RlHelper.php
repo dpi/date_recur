@@ -102,8 +102,12 @@ class RlHelper implements DateRecurHelperInterface {
    * {@inheritdoc}
    */
   public function getRules() {
-    // @todo convert to correct interface.
-    return $this->set->getRRules();
+    return array_map(
+      function (RlRRule $rule) {
+        return new RlDateRecurRule($rule->getRule());
+      },
+      $this->set->getRRules()
+    );
   }
 
   /**

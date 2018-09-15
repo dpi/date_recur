@@ -121,23 +121,6 @@ class DateRecurRlOccurrenceHandler extends PluginBase implements DateRecurOccurr
   /**
    * {@inheritdoc}
    */
-  public function humanReadable() {
-    if (empty($this->item) || !$this->isRecurring) {
-      return '';
-    }
-    return $this->getHelper()->getRlRuleset()->humanReadable();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function isRecurring() {
-    return $this->item->isRecurring();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
   public function onSave($update, $field_delta) {
     $tableName = $this::getOccurrenceCacheStorageTableName($this->item->getFieldDefinition()->getFieldStorageDefinition());
 

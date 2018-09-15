@@ -3,11 +3,19 @@
 namespace Drupal\date_recur\Plugin\Field\FieldFormatter;
 
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Cache\CacheableMetadata;
+use Drupal\Core\Datetime\DateFormatterInterface;
 use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Entity\DependencyTrait;
+use Drupal\Core\Entity\EntityStorageInterface;
+use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\date_recur\DateRange;
+use Drupal\date_recur\Entity\DateRecurInterpreterInterface;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\datetime_range\Plugin\Field\FieldFormatter\DateRangeDefaultFormatter;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
  * Plugin implementation of the 'date_recur_default_formatter' formatter.
@@ -22,23 +30,113 @@ use Drupal\datetime_range\Plugin\Field\FieldFormatter\DateRangeDefaultFormatter;
  */
 class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
 
+  use DependencyTrait;
+
+  /**
+   * The date recur interpreter entity storage.
+   *
+   * @var \Drupal\Core\Entity\EntityStorageInterface
+   */
+  protected $dateRecurInterpreterStorage;
+
+  /**
+   * Date format config ID.
+   *
+   * @var string|null
+   */
+  protected $formatType;
+
+  /**
+   * Constructs a new DateRecurDefaultFormatter.
+   *
+   * @param string $plugin_id
+   *   The plugin_id for the formatter.
+   * @param mixed $plugin_definition
+   *   The plugin implementation definition.
+   * @param \Drupal\Core\Field\FieldDefinitionInterface $field_definition
+   *   The definition of the field to which the formatter is associated.
+   * @param array $settings
+   *   The formatter settings.
+   * @param string $label
+   *   The formatter label display setting.
+   * @param string $view_mode
+   *   The view mode.
+   * @param array $third_party_settings
+   *   Third party settings.
+   * @param \Drupal\Core\Datetime\DateFormatterInterface $dateFormatter
+   *   The date formatter service.
+   * @param \Drupal\Core\Entity\EntityStorageInterface $dateFormatStorage
+   *   The date format entity storage.
+   * @param \Drupal\Core\Entity\EntityStorageInterface $dateRecurInterpreterStorage
+   *   The date recur interpreter entity storage.
+   */
+  public function __construct($plugin_id, $plugin_definition, FieldDefinitionInterface $field_definition, array $settings, $label, $view_mode, array $third_party_settings, DateFormatterInterface $dateFormatter, EntityStorageInterface $dateFormatStorage, EntityStorageInterface $dateRecurInterpreterStorage) {
+    parent::__construct($plugin_id, $plugin_definition, $field_definition, $settings, $label, $view_mode, $third_party_settings, $dateFormatter, $dateFormatStorage);
+    $this->dateRecurInterpreterStorage = $dateRecurInterpreterStorage;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
+    return new static(
+      $plugin_id,
+      $plugin_definition,
+      $configuration['field_definition'],
+      $configuration['settings'],
+      $configuration['label'],
+      $configuration['view_mode'],
+      $configuration['third_party_settings'],
+      $container->get('date.formatter'),
+      $container->get('entity.manager')->getStorage('date_format'),
+      $container->get('entity.manager')->getStorage('date_recur_interpreter')
+    );
+  }
+
   /**
    * {@inheritdoc}
    */
   public static function defaultSettings() {
     return [
-      // Whether the human readable string should be shown.
-      'show_rrule' => TRUE,
       // Show number of occurrences.
       'show_next' => 5,
       // Whether number of occurrences should be per item or in total.
       'count_per_item' => TRUE,
       // Date format for occurrences.
-      // @todo add dependencies.
       'occurrence_format_type' => 'medium',
       // Date format for end date, if same day as start date.
       'same_end_date_format_type' => 'medium',
+      'interpreter' => NULL,
     ] + parent::defaultSettings();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function calculateDependencies() {
+    $this->dependencies = parent::calculateDependencies();
+
+    /** @var string|null $dateFormatId */
+    $interpreterId = $this->getSetting('interpreter');
+    if ($interpreterId && ($interpreter = $this->dateRecurInterpreterStorage->load($interpreterId))) {
+      $this->addDependency('config', $interpreter->getConfigDependencyName());
+    }
+
+    $dateFormatDependencies = [
+      'format_type',
+      'occurrence_format_type',
+      'same_end_date_format_type',
+    ];
+    foreach ($dateFormatDependencies as $dateFormatId) {
+      $id = $this->getSetting($dateFormatId);
+      $dateFormat = $this->dateFormatStorage->load($id);
+      if (!$dateFormat) {
+        continue;
+      }
+      $this->addDependency('config', $dateFormat->getConfigDependencyName());
+    }
+
+    return $this->dependencies;
   }
 
   /**
@@ -47,10 +145,47 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
   public function settingsForm(array $form, FormStateInterface $form_state) {
     $form = parent::settingsForm($form, $form_state);
 
-    $form['show_rrule'] = [
-      '#type' => 'checkbox',
-      '#title' => $this->t('Show repeat rule'),
-      '#default_value' => $this->getSetting('show_rrule'),
+    $originalFormatType = $form['format_type'];
+    unset($form['format_type']);
+
+    // Redefine format type to change the natural order of form fields.
+    $form['format_type'] = $originalFormatType;
+    $form['format_type']['#title'] = $this->t('Non-Repeating Date format');
+    $form['format_type']['#description'] = $this->t('Date format used for field values without repeat rules.');
+    $form['occurrence_format_type'] = $originalFormatType;
+    $form['occurrence_format_type']['#title'] = $this->t('Start and end date format');
+    $form['occurrence_format_type']['#default_value'] = $this->getSetting('occurrence_format_type');
+    $form['occurrence_format_type']['#description'] = $this->t('Date format used for field values with repeat rules.');
+    $form['same_end_date_format_type'] = $originalFormatType;
+    $form['same_end_date_format_type']['#title'] = $this->t('Same day end date format');
+    $form['same_end_date_format_type']['#description'] = $this->t('Date format used for end date if field value has repeat rule. Used only if occurs on same calendar day as start date.');
+    $form['same_end_date_format_type']['#default_value'] = $this->getSetting('same_end_date_format_type');
+
+    // Redefine separator to change the natural order of form fields.
+    $originalSeparator = $form['separator'];
+    unset($form['separator']);
+    $form['separator'] = $originalSeparator;
+    // Change the width of the field if not already set. (Not set by default)
+    $form['separator']['#size'] = isset($form['separator']['#size']) ? $form['separator']['#size'] : 5;
+
+    // Redefine timezone to change the natural order of form fields.
+    $originalTimezoneOverride = $form['timezone_override'];
+    unset($form['timezone_override']);
+    $form['timezone_override'] = $originalTimezoneOverride;
+    $form['timezone_override']['#empty_option'] = $this->t('Use current user timezone');
+    $form['timezone_override']['#description'] = $this->t('Change the timezone used for displaying dates (not recommended).');
+
+    $interpreterOptions = array_map(function (DateRecurInterpreterInterface $interpreter) {
+        return $interpreter->label();
+    }, $this->dateRecurInterpreterStorage->loadMultiple());
+    $form['interpreter'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Recurring date interpreter'),
+      '#description' => $this->t('Choose a plugin for converting rules into a human readable description.'),
+      '#default_value' => $this->getSetting('interpreter'),
+      '#options' => $interpreterOptions,
+      '#required' => FALSE,
+      '#empty_option' => $this->t('- Do not show interpreted rule -'),
     ];
 
     $form['occurrences'] = [
@@ -60,7 +195,7 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
     ];
 
     $form['occurrences']['show_next'] = [
-      '#field_prefix' => $this->t('Show'),
+      '#field_prefix' => $this->t('Show maximum of'),
       '#field_suffix' => $this->t('occurrences'),
       '#type' => 'number',
       '#min' => 0,
@@ -75,16 +210,11 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
         'per_item' => $this->t('per field item'),
         'all_items' => $this->t('across all field items'),
       ],
+      // @todo Convert values to consts.
       '#default_value' => $this->getSetting('count_per_item') ? 'per_item' : 'all_items',
       '#element_validate' => [[static::class, 'validateSettingsCountPerItem']],
     ];
 
-    $form['occurrence_format_type'] = $form['format_type'];
-    $form['occurrence_format_type']['#title'] = $this->t('Date format for occurrences');
-    $form['occurrence_format_type']['#default_value'] = $this->getSetting('occurrence_format_type');
-    $form['same_end_date_format_type'] = $form['format_type'];
-    $form['same_end_date_format_type']['#title'] = $this->t('End date format for occurrences (if same day as start date)');
-    $form['same_end_date_format_type']['#default_value'] = $this->getSetting('same_end_date_format_type');
     return $form;
   }
 
@@ -129,10 +259,8 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
    * {@inheritdoc}
    */
   public function settingsSummary() {
+    $this->formatType = $this->getSetting('format_type');
     $summary = parent::settingsSummary();
-    if ($this->getSetting('show_rrule')) {
-      $summary[] = $this->t('Showing repeat rule');
-    }
 
     $countPerItem = $this->getSetting('count_per_item');
     $showOccurencesCount = $this->getSetting('show_next');
@@ -145,64 +273,47 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
       );
     }
 
-    $date = new DrupalDateTime();
-    $date->_dateRecurIsOccurrence = TRUE;
-    $summary[] = $this->t('Occurrence format: @display', [
-      '@display' => $this->formatDate($date),
-    ]);
+    $start = new DrupalDateTime('today 9am');
+    $endSameDay = clone $start;
+    $endSameDay->setTime(17, 0, 0);
+    $summary['sample_same_day'] = [
+      '#type' => 'inline_template',
+      '#template' => '{{ label }}: {{ sample }}',
+      '#context' => [
+        'label' => $this->t('Same day range'),
+        'sample' => $this->buildDateRangeValue($start, $endSameDay, TRUE),
+      ],
+    ];
+    $endDifferentDay = clone $endSameDay;
+    $endDifferentDay->modify('+1 day');
+    $summary['sample_different_day'] = [
+      '#type' => 'inline_template',
+      '#template' => '{{ label }}: {{ sample }}',
+      '#context' => [
+        'label' => $this->t('Different day range'),
+        'sample' => $this->buildDateRangeValue($start, $endDifferentDay, TRUE),
+      ],
+    ];
+
     return $summary;
   }
-
-  protected function buildDateRangeValue(DrupalDateTime $start_date, DrupalDateTime $end_date, $isOccurrence = FALSE) {
-    if ($isOccurrence) {
-      $start_date->_dateRecurIsOccurrence = $end_date->_dateRecurIsOccurrence = TRUE;
-    }
-    if ($start_date->format('Ymd') == $end_date->format('Ymd')) {
-      $end_date->_same_end_date = TRUE;
-    }
-    if ($start_date->format('U') !== $end_date->format('U')) {
-      $element = [
-        'start_date' => $this->buildDateWithIsoAttribute($start_date),
-        'separator' => ['#plain_text' => ' ' . $this->getSetting('separator') . ' '],
-        'end_date' => $this->buildDateWithIsoAttribute($end_date),
-      ];
-    }
-    else {
-      $element = $this->buildDateWithIsoAttribute($start_date);
-    }
-    return $element;
-  }
-
-  protected function formatDate($date) {
-    if (!empty($date->_same_end_date)) {
-      $format_type = $this->getSetting('same_end_date_format_type');
-    }
-    else if (empty($date->_dateRecurIsOccurrence)) {
-      $format_type = $this->getSetting('format_type');
-    }
-    else {
-      $format_type = $this->getSetting('occurrence_format_type');
-    }
-    $timezone = $this->getSetting('timezone_override') ?: $date->getTimezone()->getName();
-    return $this->dateFormatter->format($date->getTimestamp(), $format_type, '', $timezone != '' ? $timezone : NULL);
-  }
-
 
   /**
    * {@inheritdoc}
    */
   public function viewElements(FieldItemListInterface $items, $langcode) {
+    // Whether maximum is per field item or in total.
+    $isSharedMaximum = !$this->getSetting('count_per_item');
+    // Maximum amount of occurrences to be displayed.
+    $occurrenceQuota = (int) $this->getSetting('show_next');
+
     $elements = [];
-
-    $isSharedMax = !$this->getSetting('count_per_item');
-    $maxOccurrences = (int) $this->getSetting('show_next');
     foreach ($items as $delta => $item) {
-      $elements[$delta] = $this->viewValue($item, $maxOccurrences);
-
-      if ($isSharedMax) {
-        // Subtract the occurrences found in this item if occurrence count is
-        // shared across all field items.
-        $maxOccurrences -= count($elements[$delta]['#occurrences']);
+      $value = $this->viewItem($item, $occurrenceQuota);
+      $occurrenceQuota -= ($isSharedMaximum ? count($value['#occurrences']) : 0);
+      $elements[$delta] = $value;
+      if ($occurrenceQuota <= 0) {
+        break;
       }
     }
 
@@ -210,70 +321,114 @@ class DateRecurDefaultFormatter extends DateRangeDefaultFormatter {
   }
 
   /**
-   * Generate the output appropriate for one field item.
+   * Generate the output appropriate for a field item.
    *
-   * @param DateRecurItem $item
-   *   One field item.
+   * @param \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $item
+   *   A field item.
+   * @param int $maxOccurrences
+   *   Maximum number of occurrences to show for this field item.
    *
-   * @return string
-   *   The textual output generated.
+   * @return array
+   *   A render array for a field item.
    */
-  protected function viewValue(DateRecurItem $item, $maxOccurrences) {
+  protected function viewItem(DateRecurItem $item, $maxOccurrences) {
+    $cacheability = new CacheableMetadata();
     $build = [
       '#theme' => 'date_recur_default_formatter',
+      '#is_recurring' => $item->isRecurring(),
     ];
 
-    if (empty($item->end_date)) {
-      $item->end_date = clone $item->start_date;
-    }
-    $build['#date'] = $this->buildDateRangeValue($item->start_date, $item->end_date);
+    /** @var \Drupal\Core\Datetime\DrupalDateTime|null $startDate */
+    $startDate = $item->start_date;
+    /** @var \Drupal\Core\Datetime\DrupalDateTime|null $endDate */
+    $endDate = $item->end_date ? $item->end_date : $startDate;
+    $build['#date'] = $this->buildDateRangeValue($startDate, $endDate, FALSE);
 
-    if (empty($item->rrule)) {
-      $build['#isRecurring'] = FALSE;
-    }
-    else {
-      $build['#isRecurring'] = TRUE;
-    }
-
-    if ($this->getSetting('show_rrule') && !empty($item->rrule)) {
-      $build['#repeatrule'] = $item->getOccurrenceHandler()->humanReadable();
-    }
-
-    $build['#occurrences'] = $this->viewOccurrences($item, $maxOccurrences);
-
-    if (!empty($item->_attributes)) {
-      $build += $item->_attributes;
-      // Unset field item attributes since they have been included in the
-      // formatter output and should not be rendered in the field template.
-      unset($item->_attributes);
+    // Render the rule.
+    if ($item->isRecurring() && $this->getSetting('interpreter')) {
+      /** @var string|null $interpreterId */
+      $interpreterId = $this->getSetting('interpreter');
+      if ($interpreterId && ($interpreter = $this->dateRecurInterpreterStorage->load($interpreterId))) {
+        /** @var \Drupal\date_recur\Entity\DateRecurInterpreterInterface $interpreter */
+        $rules = $item->getOccurrenceHandler()->getHelper()->getRules();
+        $plugin = $interpreter->getPlugin();
+        $cacheability->addCacheableDependency($interpreter);
+        $build['#interpretation'] = $plugin->interpret($rules, 'en');
+      }
     }
 
+    // Occurrences are generated even if the item is not recurring.
+    $build['#occurrences'] = array_map(
+      function (DateRange $occurrence) {
+        $startDate = DrupalDateTime::createFromDateTime($occurrence->getStart());
+        $endDate = DrupalDateTime::createFromDateTime($occurrence->getEnd());
+        return $this->buildDateRangeValue(
+          $startDate,
+          $endDate,
+          TRUE
+        );
+      },
+      $this->getOccurrences($item, $maxOccurrences)
+    );
+
+    $cacheability->applyTo($build);
     return $build;
   }
 
-  protected function viewOccurrences(DateRecurItem $item, $maxOccurrences) {
-    if ($maxOccurrences <= 0) {
-      return [];
-    }
+  // docs.
+  // camelcase.
+  protected function buildDateRangeValue(DrupalDateTime $startDate, DrupalDateTime $endDate, $isOccurrence) {
+    $this->formatType = $isOccurrence ? $this->getSetting('occurrence_format_type') : $this->getSetting('format_type');
+    $startDateString = $this->buildDateWithIsoAttribute($startDate);
 
-    $build = [];
+    // Show the range if start and end are different, otherwise only start date.
+    if ($startDate->getTimestamp() === $endDate->getTimestamp()) {
+      return $startDateString;
+    }
+    else {
+      // Start date and end date are different.
+      $this->formatType = $startDate->format('Ymd') == $endDate->format('Ymd') ?
+        $this->getSetting('occurrence_format_type') :
+        $this->getSetting('same_end_date_format_type');
+      $endDateString = $this->buildDateWithIsoAttribute($endDate);
+      return [
+        'start_date' => $startDateString,
+        'separator' => ['#plain_text' => $this->getSetting('separator')],
+        'end_date' => $endDateString,
+      ];
+    }
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  protected function formatDate($date) {
+    if (!is_string($this->formatType)) {
+      throw new \LogicException('Date format must be set.');
+    }
+    $timezone = $this->getSetting('timezone_override') ?: $date->getTimezone()->getName();
+    return $this->dateFormatter->format($date->getTimestamp(), $this->formatType, '', $timezone);
+  }
+
+  /**
+   * Get the occurrences for a field item.
+   *
+   * Occurrences are abstracted out to make it easier for extending formatters
+   * to change.
+   *
+   * @param \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $item
+   *   A field item.
+   * @param int $maxOccurrences
+   *   Maximum number of occurrences to render.
+   *
+   * @return \Drupal\date_recur\DateRange[]
+   *   A render array.
+   */
+  protected function getOccurrences(DateRecurItem $item, $maxOccurrences) {
     $start = new \DateTime('now');
-
-    $occurrences = $item->getOccurrenceHandler()
+    return $item->getOccurrenceHandler()
       ->getHelper()
-      // @todo change to generator.
       ->getOccurrences($start, NULL, $maxOccurrences);
-    foreach ($occurrences as $occurrence) {
-      $startDate = DrupalDateTime::createFromDateTime($occurrence->getStart());
-      $endDate = DrupalDateTime::createFromDateTime($occurrence->getEnd());
-      $build[] = $this->buildDateRangeValue(
-        $startDate,
-        $endDate,
-        TRUE
-      );
-    }
-
-    return $build;
   }
 
 }

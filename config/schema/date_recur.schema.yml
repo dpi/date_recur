@@ -18,6 +18,21 @@ field.field_settings.date_recur:
       type: string
       label: 'Precreate interval'
 
+field.formatter.settings.date_recur_default_formatter:
+  type: field.formatter.settings.daterange_default
+  label: 'Default date recur formatter.'
+  mapping:
+    show_next:
+      type: integer
+    count_per_item:
+      type: boolean
+    occurrence_format_type:
+      type: string
+    same_end_date_format_type:
+      type: string
+    interpreter:
+      type: string
+
 date_recur.interpreter.*:
   type: config_entity
   label: 'Date format'

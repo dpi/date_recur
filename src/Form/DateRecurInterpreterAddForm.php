@@ -19,6 +19,7 @@ class DateRecurInterpreterAddForm extends DateRecurInterpreterEditForm {
       '#title' => $this->t('Label'),
       '#type' => 'textfield',
       '#default_value' => $dateRecurInterpreter->label(),
+      '#required' => TRUE,
     ];
 
     $form['id'] = [
@@ -37,6 +38,7 @@ class DateRecurInterpreterAddForm extends DateRecurInterpreterEditForm {
     );
     $form['plugin_type'] = [
       '#type' => 'select',
+      '#title' => $this->t('Plugin'),
       '#options' => $options,
       '#required' => TRUE,
     ];
