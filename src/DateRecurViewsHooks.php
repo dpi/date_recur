@@ -9,6 +9,7 @@ use Drupal\Core\Entity\EntityTypeManagerInterface;
 use Drupal\Core\Extension\ModuleHandlerInterface;
 use Drupal\Core\StringTranslation\StringTranslationTrait;
 use Drupal\Core\TypedData\TypedDataManagerInterface;
+use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 use Drupal\field\FieldStorageConfigInterface;
 use Drupal\views\Views;
 use Symfony\Component\DependencyInjection\ContainerInterface;
@@ -223,6 +224,11 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
       return $data;
     }
     $originalTable = $parentData[$fieldTableName];
+
+    // Add some extra fields.
+    $originalTable[$fieldName . '_value']['field']['id'] = 'date_recur_date';
+    $originalTable[$fieldName . '_value']['field']['source date format'] = DateTimeItemInterface::DATETIME_STORAGE_FORMAT;
+//    $originalTable[$fieldName . '_end_value']['field']['field'] = $fieldName . '_end_value';
 
     $occurrenceTableName = DateRecurOccurrences::getOccurrenceCacheStorageTableName($fieldDefinition);
     if ($this->database->schema()->tableExists($occurrenceTableName)) {
