@@ -2,6 +2,7 @@
 
 namespace Drupal\Tests\date_recur\Functional;
 
+use Drupal\Core\Field\Entity\BaseFieldOverride;
 use Drupal\Core\Url;
 use Drupal\date_recur_entity_test\Entity\DrEntityTest;
 use Drupal\Tests\BrowserTestBase;
@@ -202,6 +203,24 @@ class DateRecurBasicWidgetTest extends BrowserTestBase {
     $url = Url::fromRoute('entity.dr_entity_test.add_form');
     $this->drupalPostForm($url, $edit, 'Save');
     $this->assertSession()->pageTextContains('Start date must be set if end date is set.');
+  }
+
+  /**
+   * Tests default values appear in widget.
+   */
+  public function testDefaultValues() {
+    $defaultRrule = 'FREQ=WEEKLY;COUNT=995';
+
+    /** @var \Drupal\Core\Entity\EntityFieldManagerInterface $entityFieldManager */
+    $entityFieldManager = \Drupal::service('entity_field.manager');
+    $baseFields = $entityFieldManager->getBaseFieldDefinitions('dr_entity_test');
+    $baseFieldOverride = BaseFieldOverride::createFromBaseFieldDefinition($baseFields['dr'], 'dr_entity_test');
+    $baseFieldOverride->setDefaultValue([['default_rrule' => $defaultRrule]]);
+    $baseFieldOverride->save();
+
+    $url = Url::fromRoute('entity.dr_entity_test.add_form');
+    $this->drupalGet($url);
+    $this->assertSession()->fieldValueEquals('dr[0][rrule]', $defaultRrule);
   }
 
   /**

@@ -2,8 +2,10 @@
 
 namespace Drupal\Tests\date_recur\Kernel;
 
+use Drupal\Core\Field\Entity\BaseFieldOverride;
 use Drupal\date_recur\DateRange;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
+use Drupal\date_recur_entity_test\Entity\DrEntityTest;
 use Drupal\entity_test\Entity\EntityTest;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\field\Entity\FieldStorageConfig;
@@ -24,6 +26,7 @@ class DateRecurFieldItemListTest extends KernelTestBase {
    * {@inheritdoc}
    */
   protected static $modules = [
+    'date_recur_entity_test',
     'entity_test',
     'datetime',
     'datetime_range',
@@ -90,6 +93,25 @@ class DateRecurFieldItemListTest extends KernelTestBase {
       }
     }
     $this->assertEquals($maxIterations, $iterationCount);
+  }
+
+  /**
+   * Tests default values are available programmatically.
+   */
+  public function testDefaultValues() {
+    $this->installEntitySchema('dr_entity_test');
+
+    $defaultRrule = 'FREQ=WEEKLY;COUNT=995';
+
+    /** @var \Drupal\Core\Entity\EntityFieldManagerInterface $entityFieldManager */
+    $entityFieldManager = \Drupal::service('entity_field.manager');
+    $baseFields = $entityFieldManager->getBaseFieldDefinitions('dr_entity_test');
+    $baseFieldOverride = BaseFieldOverride::createFromBaseFieldDefinition($baseFields['dr'], 'dr_entity_test');
+    $baseFieldOverride->setDefaultValue([['default_rrule' => $defaultRrule]]);
+    $baseFieldOverride->save();
+
+    $entity = DrEntityTest::create();
+    $this->assertEquals($defaultRrule, $entity->dr->rrule);
   }
 
 }

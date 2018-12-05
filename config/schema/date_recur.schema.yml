@@ -1,6 +1,10 @@
 field.value.date_recur:
   type: field.value.daterange
   label: 'Default value'
+  mapping:
+    default_rrule:
+      type: string
+      label: 'Default RRULE'
 
 field.storage_settings.date_recur:
   type: field.storage_settings.daterange
