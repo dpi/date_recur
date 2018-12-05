@@ -3,7 +3,10 @@
 namespace Drupal\Tests\date_recur\Functional;
 
 use Drupal\Core\Url;
+use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\date_recur_entity_test\Entity\DrEntityTest;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\Tests\BrowserTestBase;
 
 /**
@@ -219,6 +222,55 @@ class DateRecurBasicWidgetTest extends BrowserTestBase {
     $url = Url::fromRoute('entity.dr_entity_test.add_form');
     $this->drupalPostForm($url, $edit, 'Save');
     $this->assertSession()->pageTextContains('Repeat rule is formatted incorrectly.');
+  }
+
+  /**
+   * Tests if field is set to required, only start date is required.
+   *
+   * End date must never be required, value is copied over from start date.
+   */
+  public function testRequiredField() {
+    $field_storage = FieldStorageConfig::create([
+      'entity_type' => 'entity_test',
+      'field_name' => 'foo',
+      'type' => 'date_recur',
+      'settings' => [
+        'datetime_type' => DateRecurItem::DATETIME_TYPE_DATETIME,
+      ],
+    ]);
+    $field_storage->save();
+
+    $field = [
+      'field_name' => 'foo',
+      'entity_type' => 'entity_test',
+      'bundle' => 'entity_test',
+      // Set instance to required.
+      'required' => TRUE,
+    ];
+    FieldConfig::create($field)->save();
+
+
+    $display = entity_get_form_display('entity_test', 'entity_test', 'default');
+    $component = $display->getComponent('foo');
+    $component['region'] = 'content';
+    $component['type'] = 'date_recur_basic_widget';
+    $component['settings'] = [];
+    $display->setComponent('foo', $component);
+    $display->save();
+
+    $url = Url::fromRoute('entity.entity_test.add_form');
+    $edit = [
+      'foo[0][value][date]' => '',
+      'foo[0][value][time]' => '',
+      'foo[0][end_value][date]' => '',
+      'foo[0][end_value][time]' => '',
+      'foo[0][timezone]' => 'America/Chicago',
+      'foo[0][rrule]' => 'FREQ=DAILY',
+    ];
+    $this->drupalPostForm($url, $edit, 'Save');
+
+    $this->assertSession()->pageTextContains('The Start date is required.');
+    $this->assertSession()->pageTextNotContains('The End date is required.');
   }
 
   /**

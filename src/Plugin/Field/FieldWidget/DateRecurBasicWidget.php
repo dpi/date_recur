@@ -95,6 +95,8 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
     $element['value']['#title'] = $this->t('Start');
     $element['end_value']['#title'] = $this->t('End');
     $element['end_value']['#description'] = $this->t('Leave end empty to copy start date; the occurrence will therefore not have any duration.');
+    // The end date is never required.
+    $element['end_value']['#required'] = FALSE;
     $element['value']['#group'] = $element['end_value']['#group'] = implode('][', $firstOccurrenceParents);
 
     // Add custom value callbacks to correctly form a date from time zone field.
