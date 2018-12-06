@@ -68,6 +68,15 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
     $element = parent::defaultValuesForm($form, $form_state);
 
     $defaultValue = $this->getFieldDefinition()->getDefaultValueLiteral();
+
+    $element['default_time_zone'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Time zone'),
+      '#description' => $this->t('Time zone is required if a default start date or end date is provided.'),
+      '#options' => $this->getTimeZoneOptions(),
+      '#default_value' => isset($defaultValue[0]['default_time_zone']) ? $defaultValue[0]['default_time_zone'] : '',
+    ];
+
     $element['default_rrule'] = [
       '#type' => 'textarea',
       '#title' => $this->t('RRULE'),
@@ -75,6 +84,26 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
     ];
 
     return $element;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function defaultValuesFormValidate(array $element, array &$form, FormStateInterface $form_state) {
+    $defaultTimeZone = $form_state->getValue(['default_value_input', 'default_time_zone']);
+    if (empty($defaultTimeZone)) {
+      $defaultStartType = $form_state->getValue(['default_value_input', 'default_date_type']);
+      if (!empty($defaultStartType)) {
+        $form_state->setErrorByName('default_value_input][default_time_zone', $this->t('Time zone must be provided if a default start date is provided.'));
+      }
+
+      $defaultEndType = $form_state->getValue(['default_value_input', 'default_end_date_type']);
+      if (!empty($defaultEndType)) {
+        $form_state->setErrorByName('default_value_input][default_time_zone', $this->t('Time zone must be provided if a default end date is provided.'));
+      }
+    }
+
+    parent::defaultValuesFormValidate($element, $form, $form_state);
   }
 
   /**
@@ -88,6 +117,11 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
       $values[0]['default_rrule'] = $rrule;
     }
 
+    $timeZone = $form_state->getValue(['default_value_input', 'default_time_zone']);
+    if ($timeZone) {
+      $values[0]['default_time_zone'] = $timeZone;
+    }
+
     return $values;
   }
 
@@ -96,9 +130,22 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
    */
   public static function processDefaultValue($default_value, FieldableEntityInterface $entity, FieldDefinitionInterface $definition): array {
     $rrule = isset($default_value[0]['default_rrule']) ? $default_value[0]['default_rrule'] : NULL;
+    $timeZone = isset($default_value[0]['default_time_zone']) ? $default_value[0]['default_time_zone'] : NULL;
     $defaultValue = parent::processDefaultValue($default_value, $entity, $definition);
     $defaultValue[0]['rrule'] = $rrule;
+    $defaultValue[0]['timezone'] = $timeZone;
     return $defaultValue;
+  }
+
+  /**
+   * Get a list of time zones suitable for a select field.
+   *
+   * @return array
+   *   A list of time zones where keys are PHP time zone codes, and values are
+   *   human readable and translatable labels.
+   */
+  protected function getTimeZoneOptions() {
+    return \system_time_zones(TRUE, TRUE);
   }
 
   /**

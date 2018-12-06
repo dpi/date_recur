@@ -205,7 +205,11 @@ class DateRecurItem extends DateRangeItem {
    */
   public function isEmpty() {
     $rrule = $this->get('rrule')->getValue();
-    return parent::isEmpty() && ($rrule === NULL || $rrule === '');
+    $timeZone = $this->get('timezone')->getValue();
+    return
+      parent::isEmpty()
+      && ($rrule === NULL || $rrule === '')
+      && ($timeZone === NULL || $timeZone === '');
   }
 
 }
