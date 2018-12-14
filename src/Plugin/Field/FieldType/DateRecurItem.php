@@ -48,7 +48,8 @@ class DateRecurItem extends DateRangeItem {
 
     $properties['timezone'] = DataDefinition::create('string')
       ->setLabel(new TranslatableMarkup('Timezone'))
-      ->setRequired(FALSE);
+      ->setRequired(TRUE)
+      ->addConstraint('DateRecurTimeZone');
 
     $properties['infinite'] = DataDefinition::create('boolean')
       ->setLabel(new TranslatableMarkup('Whether the RRule is an infinite rule. Derived value from RRULE.'))

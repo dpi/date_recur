@@ -70,7 +70,69 @@ class DateRecurFieldItemTest extends KernelTestBase {
   }
 
   /**
-   * Test exception thrown if time zone is missing.
+   * Tests no violations when time zone is recognised by PHP.
+   */
+  public function testTimeZoneConstraintValid() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      'value' => '2014-06-15T23:00:00',
+      'end_value' => '2014-06-16T07:00:00',
+      'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3',
+      'infinite' => '0',
+      'timezone' => 'Australia/Sydney',
+    ];
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->dr->validate();
+    $this->assertEquals(0, $violations->count());
+  }
+
+  /**
+   * Tests violations when time zone is not a recognised by PHP.
+   */
+  public function testTimeZoneConstraintInvalidZone() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      'value' => '2014-06-15T23:00:00',
+      'end_value' => '2014-06-16T07:00:00',
+      'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3',
+      'infinite' => '0',
+      'timezone' => 'Mars/Mariner',
+    ];
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->dr->validate();
+    $this->assertEquals(1, $violations->count());
+
+    $violation = $violations->get(0);
+    $message = (string) $violation->getMessage();
+    $this->assertEquals('<em class="placeholder">Mars/Mariner</em> is not a valid time zone.', $message);
+  }
+
+  /**
+   * Tests violations when time zone is not a string.
+   */
+  public function testTimeZoneConstraintInvalidFormat() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      'value' => '2014-06-15T23:00:00',
+      'end_value' => '2014-06-16T07:00:00',
+      'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3',
+      'infinite' => '0',
+      'timezone' => new \StdClass(),
+    ];
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->dr->validate();
+    $this->assertEquals(1, $violations->count());
+
+    $violation = $violations->get(0);
+    $message = (string) $violation->getMessage();
+    $this->assertEquals('This value should be of the correct primitive type.', $message);
+  }
+
+  /**
+   * Test exception thrown if time zone is missing when getting a item helper.
    */
   public function testTimeZoneMissing() {
     $entity = DrEntityTest::create();
@@ -87,7 +149,7 @@ class DateRecurFieldItemTest extends KernelTestBase {
   }
 
   /**
-   * Test exception thrown if time zone is invalid.
+   * Test exception thrown for invalid time zones when getting a item helper.
    */
   public function testTimeZoneInvalid() {
     $entity = DrEntityTest::create();
