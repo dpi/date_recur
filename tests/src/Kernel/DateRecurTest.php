@@ -4,6 +4,7 @@ namespace Drupal\Tests\date_recur\Kernel;
 
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\date_recur_entity_test\Entity\DrEntityTest;
+use Drupal\date_recur_entity_test\Entity\DrEntityTestSingleCardinality;
 use Drupal\entity_test\Entity\EntityTest;
 use Drupal\field\Entity\FieldConfig;
 use Drupal\field\Entity\FieldStorageConfig;
@@ -35,6 +36,44 @@ class DateRecurTest extends KernelTestBase {
   protected function setUp() {
     parent::setUp();
     $this->installEntitySchema('dr_entity_test');
+  }
+
+  /**
+   * Basic tests for purposes of ensuring the entity type works.
+   */
+  public function testSingleCardinalityBaseField() {
+    $this->installEntitySchema('dr_entity_test_single');
+
+    $entity = DrEntityTestSingleCardinality::create();
+    $entity->dr = [
+      [
+      'value' => '2014-06-15T23:00:00',
+      'end_value' => '2014-06-16T07:00:00',
+      'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR',
+      'infinite' => '1',
+      'timezone' => 'Australia/Sydney',
+      ],
+      [
+      'value' => '2013-06-15T23:00:00',
+      'end_value' => '2013-06-16T07:00:00',
+      'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR',
+      'infinite' => '1',
+      'timezone' => 'Australia/Sydney',
+      ],
+    ];
+
+    /** @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList $fieldList */
+    $fieldList = $entity->dr;
+    $validations = $fieldList->validate();
+    $violation = $validations->get(0);
+    $message = (string) $violation->getMessage();
+    $this->assertEquals('<em class="placeholder">Rule</em>: this field cannot hold more than 1 values.', $message);
+    $this->assertEquals(2, $fieldList->count());
+
+    // Assert after saving and reloading entity only one value is available.
+    $entity->save();
+    $entity = DrEntityTestSingleCardinality::load($entity->id());
+    $this->assertEquals(1, $entity->dr->count());
   }
 
   /**

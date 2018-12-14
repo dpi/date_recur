@@ -33,6 +33,7 @@ class DateRecurBaseFieldTest extends KernelTestBase {
     parent::setUp();
     $this->installEntitySchema('dr_entity_test');
     $this->installEntitySchema('dr_entity_test_rev');
+    $this->installEntitySchema('dr_entity_test_single');
     // Needed for uninstall tests.
     $this->installSchema('user', ['users_data']);
   }
