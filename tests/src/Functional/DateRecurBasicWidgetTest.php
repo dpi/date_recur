@@ -322,6 +322,51 @@ class DateRecurBasicWidgetTest extends BrowserTestBase {
   }
 
   /**
+   * Tests an error is displayed if a long RRULE is submitted.
+   */
+  public function testRruleMaxLengthError() {
+    $field_storage = FieldStorageConfig::create([
+      'entity_type' => 'entity_test',
+      'field_name' => 'foo',
+      'type' => 'date_recur',
+      'settings' => [
+        'datetime_type' => DateRecurItem::DATETIME_TYPE_DATETIME,
+        // Test a super short length.
+        'rrule_max_length' => 20,
+      ],
+    ]);
+    $field_storage->save();
+
+    $field = [
+      'field_name' => 'foo',
+      'entity_type' => 'entity_test',
+      'bundle' => 'entity_test',
+    ];
+    FieldConfig::create($field)->save();
+
+    $display = entity_get_form_display('entity_test', 'entity_test', 'default');
+    $component = $display->getComponent('foo');
+    $component['region'] = 'content';
+    $component['type'] = 'date_recur_basic_widget';
+    $component['settings'] = [];
+    $display->setComponent('foo', $component);
+    $display->save();
+
+    $url = Url::fromRoute('entity.entity_test.add_form');
+    $edit = [
+      'foo[0][value][date]' => '2008-06-17',
+      'foo[0][value][time]' => '12:00:00',
+      'foo[0][end_value][date]' => '2008-06-17',
+      'foo[0][end_value][time]' => '12:00:00',
+      'foo[0][timezone]' => 'America/Chicago',
+      'foo[0][rrule]' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3',
+    ];
+    $this->drupalPostForm($url, $edit, 'Save');
+
+    $this->assertSession()->pageTextContains('This value is too long. It should have 20 characters or less.');
+  }
+
+  /**
    * Get last saved Dr Entity Test entity.
    *
    * @return \Drupal\date_recur_entity_test\Entity\DrEntityTest|null

@@ -9,6 +9,10 @@ field.value.date_recur:
 field.storage_settings.date_recur:
   type: field.storage_settings.daterange
   label: 'Date recur settings'
+  mapping:
+    rrule_max_length:
+      type: integer
+      label: 'Maximum character length of RRULE'
 
 field.field_settings.date_recur:
   type: mapping

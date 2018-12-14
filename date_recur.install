@@ -6,6 +6,7 @@
  */
 
 use Drupal\Core\Entity\Sql\SqlEntityStorageInterface;
+use Drupal\field\Entity\FieldStorageConfig;
 
 /**
  * Implements hook_requirements().
@@ -103,6 +104,42 @@ function date_recur_update_8201(&$sandbox) {
         $definitions = $lastInstalledSchemaRepository->getLastInstalledFieldStorageDefinitions($entityTypeId);
         $definitions[$fieldName] = $fieldDefinition;
         $lastInstalledSchemaRepository->setLastInstalledFieldStorageDefinitions($entityTypeId, $definitions);
+      }
+    }
+  }
+}
+
+/**
+ * Add a default value for new 'rrule_max_length' setting on date recur fields.
+ *
+ * Applies to attached fields only.
+ */
+function date_recur_update_8202(&$sandbox) {
+  $fieldType = 'date_recur';
+  $entityTypeManager = \Drupal::entityTypeManager();
+  $entityFieldManager = \Drupal::service('entity_field.manager');
+  $entityFieldMap = $entityFieldManager->getFieldMapByFieldType($fieldType);
+
+  // Iterate over all date_recur fields for all entity types.
+  foreach ($entityFieldMap as $entityTypeId => $fields) {
+    $entityStorage = $entityTypeManager->getStorage($entityTypeId);
+    if (!$entityStorage instanceof SqlEntityStorageInterface) {
+      continue;
+    }
+
+    // Loads definitions for all fields (even non date_recur).
+    $entityFieldStorageDefinitions = $entityFieldManager->getFieldStorageDefinitions($entityTypeId);
+
+    // Intersect date_recur fields with storage definitions for all fields.
+    /** @var \Drupal\Core\Field\FieldStorageDefinitionInterface[] $fieldDefinitions */
+    $fieldDefinitions = array_intersect_key($entityFieldStorageDefinitions, $fields);
+
+    // Iterate over all date_recur field definitions for this entity type.
+    foreach ($fieldDefinitions as $fieldDefinition) {
+      if ($fieldDefinition instanceof FieldStorageConfig) {
+        // Ignore base fields, etc.
+        $fieldDefinition->setSetting('rrule_max_length', 256);
+        $fieldDefinition->save();
       }
     }
   }

@@ -3,7 +3,11 @@
 namespace Drupal\Tests\date_recur\Kernel;
 
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
+use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\date_recur_entity_test\Entity\DrEntityTest;
+use Drupal\entity_test\Entity\EntityTest;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\KernelTests\KernelTestBase;
 
 /**
@@ -129,6 +133,49 @@ class DateRecurFieldItemTest extends KernelTestBase {
     $violation = $violations->get(0);
     $message = (string) $violation->getMessage();
     $this->assertEquals('This value should be of the correct primitive type.', $message);
+  }
+
+  /**
+   * Tests violations when RRULE over max length.
+   */
+  public function testRruleMaxLengthConstraint() {
+    $this->installEntitySchema('entity_test');
+
+    $field_storage = FieldStorageConfig::create([
+      'entity_type' => 'entity_test',
+      'field_name' => 'foo',
+      'type' => 'date_recur',
+      'settings' => [
+        'datetime_type' => DateRecurItem::DATETIME_TYPE_DATETIME,
+        // Test a super short length.
+        'rrule_max_length' => 20,
+      ],
+    ]);
+    $field_storage->save();
+
+    $field = [
+      'field_name' => 'foo',
+      'entity_type' => 'entity_test',
+      'bundle' => 'entity_test',
+    ];
+    FieldConfig::create($field)->save();
+
+    $entity = EntityTest::create();
+    $entity->foo = [
+      'value' => '2014-06-15T23:00:00',
+      'end_value' => '2014-06-16T07:00:00',
+      'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3',
+      'infinite' => '0',
+      'timezone' => 'Australia/Sydney',
+    ];
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->foo->validate();
+    $this->assertEquals(1, $violations->count());
+
+    $violation = $violations->get(0);
+    $message = strip_tags((string) $violation->getMessage());
+    $this->assertEquals('This value is too long. It should have 20 characters or less.', $message);
   }
 
   /**

@@ -45,6 +45,11 @@ class DateRecurItem extends DateRangeItem {
     $properties['rrule'] = DataDefinition::create('string')
       ->setLabel(new TranslatableMarkup('RRule'))
       ->setRequired(FALSE);
+    $rruleMaxLength = $field_definition->getSetting('rrule_max_length');
+    assert(empty($rruleMaxLength) || (is_numeric($rruleMaxLength) && $rruleMaxLength > 0));
+    if (!empty($rruleMaxLength)) {
+      $properties['rrule']->addConstraint('Length', ['max' => $rruleMaxLength]);
+    }
 
     $properties['timezone'] = DataDefinition::create('string')
       ->setLabel(new TranslatableMarkup('Timezone'))
@@ -90,11 +95,37 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
+  public static function defaultStorageSettings() {
+    return [
+      'rrule_max_length' => 256,
+    ] + parent::defaultStorageSettings();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public static function defaultFieldSettings() {
     return [
       // @todo needs settings tests.
       'precreate' => 'P2Y',
     ] + parent::defaultFieldSettings();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function storageSettingsForm(array &$form, FormStateInterface $form_state, $has_data) {
+    $element = parent::storageSettingsForm($form, $form_state, $has_data);
+
+    $element['rrule_max_length'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Maximum character length of RRULE'),
+      '#description' => $this->t('Define the maximum characters a RRULE can contain.'),
+      '#default_value' => $this->getSetting('rrule_max_length'),
+      '#min' => 0,
+    ];
+
+    return $element;
   }
 
   /**
