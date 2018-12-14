@@ -146,13 +146,24 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    */
   public function dateValueCallback(array $element, $input, FormStateInterface $form_state) {
     if ($input !== FALSE) {
-      $timeZonePath = $element['#parents'];
-      array_pop($timeZonePath);
+      $timeZonePath = array_slice($element['#parents'], 0, -1);
       $timeZonePath[] = 'timezone';
 
       // Warning: The time zone is not yet validated, make sure it is valid
       // before using.
       $submittedTimeZone = NestedArray::getValue($form_state->getUserInput(), $timeZonePath);
+      if (!isset($submittedTimeZone)) {
+        // If no time zone was submitted, such as when the 'timezone' field is
+        // set to #access => FALSE, its necessary to fall back to the fields
+        // default value.
+        $timeZoneFieldPath = array_slice($element['#array_parents'], 0, -1);
+        $timeZoneFieldPath[] = 'timezone';
+        $timeZoneField = NestedArray::getValue($form_state->getCompleteForm(), $timeZoneFieldPath);
+        $submittedTimeZone = isset($timeZoneField["#value"])
+          ? $timeZoneField["#value"]
+          : (isset($timeZoneField["#default_value"]) ? $timeZoneField["#default_value"] : NULL);
+      }
+
       $allTimeZones = \DateTimeZone::listIdentifiers();
       // @todo Add test for invalid submitted time zone.
       if (!in_array($submittedTimeZone, $allTimeZones)) {

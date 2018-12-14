@@ -25,6 +25,7 @@ class DateRecurBasicWidgetTest extends BrowserTestBase {
    * {@inheritdoc}
    */
   protected static $modules = [
+    'date_recur_basic_widget_test',
     'date_recur_entity_test',
     'entity_test',
     'datetime',
@@ -289,6 +290,35 @@ class DateRecurBasicWidgetTest extends BrowserTestBase {
 
     $this->assertSession()->pageTextContains('The Start date is required.');
     $this->assertSession()->pageTextNotContains('The End date is required.');
+  }
+
+  /**
+   * Tests if field is set to required, only start date is required.
+   *
+   * End date must never be required, value is copied over from start date.
+   */
+  public function testHiddenTimeZoneField() {
+    \Drupal::state()->set(\DATE_RECUR_BASIC_WIDGET_TEST_HIDDEN_TIMEZONE_FIELD_HOOK_FORM_ALTER, TRUE);
+
+    $this->drupalGet(Url::fromRoute('entity.dr_entity_test.add_form'));
+
+    // Time zone field should be hidden.
+    $this->assertSession()->fieldNotExists('dr[0][timezone]');
+    // Make sure something exists.
+    $this->assertSession()->fieldExists('dr[0][rrule]');
+
+    $edit = [
+      // No time zone here.
+      'dr[0][value][date]' => '2008-06-17',
+      'dr[0][value][time]' => '12:00:00',
+      'dr[0][end_value][date]' => '2008-06-17',
+      'dr[0][end_value][time]' => '12:00:00',
+      'dr[0][rrule]' => 'FREQ=DAILY;COUNT=10',
+    ];
+    $this->drupalPostForm(NULL, $edit, 'Save');
+
+    // The form would previously would not submit, an error was displayed.
+    $this->assertSession()->pageTextContains('dr_entity_test 1 has been created.');
   }
 
   /**
