@@ -212,4 +212,19 @@ class DateRecurFieldItemTest extends KernelTestBase {
     $entity->dr[0]->getHelper();
   }
 
+  /**
+   * Test field item generation.
+   */
+  public function testGenerateSampleValue() {
+    $entity = DrEntityTest::create();
+    $entity->dr->generateSampleItems();
+    $this->assertRegExp('/^FREQ=DAILY;COUNT=\d{1,2}$/', $entity->dr->rrule);
+    $this->assertFalse($entity->dr->infinite);
+    $this->assertTrue(in_array($entity->dr->timezone, timezone_identifiers_list(), TRUE));
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->dr->validate();
+    $this->assertEquals(0, $violations->count());
+  }
+
 }

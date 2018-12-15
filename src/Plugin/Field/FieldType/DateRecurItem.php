@@ -3,6 +3,7 @@
 namespace Drupal\date_recur\Plugin\Field\FieldType;
 
 use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
@@ -238,6 +239,20 @@ class DateRecurItem extends DateRangeItem {
   public function isEmpty() {
     $rrule = $this->get('rrule')->getValue();
     return parent::isEmpty() && ($rrule === NULL || $rrule === '');
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function generateSampleValue(FieldDefinitionInterface $field_definition) {
+    $values = parent::generateSampleValue($field_definition);
+
+    $tzi_list = timezone_identifiers_list();
+    $values['timezone'] = $tzi_list[array_rand($tzi_list)];
+    $values['rrule'] = 'FREQ=DAILY;COUNT=' . rand(2, 10);
+    $values['infinite'] = FALSE;
+
+    return $values;
   }
 
 }
