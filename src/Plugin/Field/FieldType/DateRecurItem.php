@@ -247,8 +247,8 @@ class DateRecurItem extends DateRangeItem {
   public static function generateSampleValue(FieldDefinitionInterface $field_definition) {
     $values = parent::generateSampleValue($field_definition);
 
-    $tzi_list = timezone_identifiers_list();
-    $values['timezone'] = $tzi_list[array_rand($tzi_list)];
+    $timeZoneList = timezone_identifiers_list();
+    $values['timezone'] = $timeZoneList[array_rand($timeZoneList)];
     $values['rrule'] = 'FREQ=DAILY;COUNT=' . rand(2, 10);
     $values['infinite'] = FALSE;
 

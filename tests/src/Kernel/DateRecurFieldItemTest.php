@@ -214,6 +214,8 @@ class DateRecurFieldItemTest extends KernelTestBase {
 
   /**
    * Test field item generation.
+   *
+   * @covers ::generateSampleValue
    */
   public function testGenerateSampleValue() {
     $entity = DrEntityTest::create();
