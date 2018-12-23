@@ -10,6 +10,14 @@ namespace Drupal\date_recur;
 interface DateRecurRuleInterface {
 
   /**
+   * Get the frequency for the rule.
+   *
+   * @return string
+   *   The frequency for the rule.
+   */
+  public function getFrequency();
+
+  /**
    * Get the RULE parts.
    *
    * For example, "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;" will return:

@@ -2,6 +2,8 @@
 
 namespace Drupal\date_recur\Plugin\Field\FieldType;
 
+use Drupal\Component\Utility\Html;
+use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
@@ -11,6 +13,7 @@ use Drupal\Core\TypedData\DataDefinition;
 use Drupal\Core\TypedData\ListDataDefinition;
 use Drupal\date_recur\DateRecurHelper;
 use Drupal\date_recur\DateRecurNonRecurringHelper;
+use Drupal\date_recur\DateRecurPartGrid;
 use Drupal\date_recur\DateRecurUtility;
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
 use Drupal\date_recur\Plugin\Field\DateRecurOccurrencesComputed;
@@ -25,7 +28,8 @@ use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeItem;
  *   description = @Translation("Recurring dates field"),
  *   default_widget = "date_recur_basic_widget",
  *   default_formatter = "date_recur_basic_formatter",
- *   list_class = "\Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList"
+ *   list_class = "\Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList",
+ *   constraints = {"DateRecurRuleParts" = {}}
  * )
  */
 class DateRecurItem extends DateRangeItem {
@@ -45,7 +49,8 @@ class DateRecurItem extends DateRangeItem {
 
     $properties['rrule'] = DataDefinition::create('string')
       ->setLabel(new TranslatableMarkup('RRule'))
-      ->setRequired(FALSE);
+      ->setRequired(FALSE)
+      ;//->addConstraint('DateRecurRuleParts');
     $rruleMaxLength = $field_definition->getSetting('rrule_max_length');
     assert(empty($rruleMaxLength) || (is_numeric($rruleMaxLength) && $rruleMaxLength > 0));
     if (!empty($rruleMaxLength)) {
@@ -109,6 +114,10 @@ class DateRecurItem extends DateRangeItem {
     return [
       // @todo needs settings tests.
       'precreate' => 'P2Y',
+      'parts' => [
+        'all' => TRUE,
+        'frequencies' => [],
+      ],
     ] + parent::defaultFieldSettings();
   }
 
@@ -148,6 +157,149 @@ class DateRecurItem extends DateRangeItem {
       '#options' => $options,
       '#default_value' => $this->getSetting('precreate'),
     ];
+
+    $element['parts'] = [
+      '#type' => 'container',
+    ];
+    $element['parts']['#after_build'][] = [get_class($this), 'afterBuildXyz'];
+
+    $parents = [
+      'settings',
+      'parts',
+      'all',
+    ];
+    // Constructs a name that looks like settings[parts][all].
+    $allFrequencyName = $parents[0] . '[' . implode('][', array_slice($parents, 1)) . ']';
+
+    $allPartsSettings = $this->getSetting('parts');
+    $element['parts']['all'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Allow all frequency and parts'),
+      '#default_value' => $allPartsSettings['all'],
+    ];
+
+    $frequencyLabels = DateRecurPartGrid::frequencyLabels();
+    $partLabels = DateRecurPartGrid::partLabels();
+
+    $partsCheckboxes = [];
+    foreach (DateRecurPartGrid::PARTS as $part) {
+      $partsCheckboxes[$part] = [
+        '#type' => 'checkbox',
+        '#title' => $partLabels[$part],
+      ];
+    }
+
+    $partsOptions = [
+      'disabled' => $this->t('Disabled'),
+      'all-parts' => $this->t('All parts'),
+      'some-parts' => $this->t('Specify parts'),
+    ];
+
+    // Table is a container so visibility states can be added.
+    $element['parts']['table'] = [
+      '#theme' => 'date_recur_settings_frequency_table',
+      '#type' => 'container',
+      '#states' => [
+        'visible' => [
+          ':input[name="' . $allFrequencyName . '"]' => ['checked' => FALSE],
+        ],
+      ],
+    ];
+    foreach (DateRecurPartGrid::FREQUENCIES as $frequency) {
+      $row = [];
+
+      $row['frequency']['#plain_text'] = $frequencyLabels[$frequency];
+
+      $parents = [
+        'settings',
+        'parts',
+        'table',
+        $frequency,
+        'setting',
+      ];
+      // Constructs a name that looks like
+      // settings[parts][table][MINUTELY][setting].
+      $settingId = $parents[0] . '[' . implode('][', array_slice($parents, 1)) . ']';
+
+      $enabledParts = isset($allPartsSettings['frequencies'][$frequency]) ? $allPartsSettings['frequencies'][$frequency] : [];
+      $defaultSetting = NULL;
+      if (count($enabledParts) === 0) {
+        $defaultSetting = 'disabled';
+      }
+      elseif (in_array('*', $enabledParts)) {
+        $defaultSetting = 'all-parts';
+      }
+      elseif (count($enabledParts) > 0) {
+        $defaultSetting = 'some-parts';
+      }
+
+      $row['setting'] = [
+        '#type' => 'radios',
+        '#options' => $partsOptions,
+        '#required' => TRUE,
+        '#default_value' => $defaultSetting,
+      ];
+
+      $row['parts'] = $partsCheckboxes;
+      foreach ($row['parts'] as $part => &$partsCheckbox) {
+        $partsCheckbox['#states']['visible'][] = [
+          ':input[name="' . $settingId . '"]' => ['value' => 'some-parts'],
+        ];
+        $partsCheckbox['#default_value'] = in_array($part, $enabledParts, TRUE);
+      }
+
+      $element['parts']['table'][$frequency] = $row;
+    }
+
+    $list = [];
+    $partLabels = DateRecurPartGrid::partLabels();
+    foreach (DateRecurPartGrid::partDescriptions() as $part => $partDescription) {
+      $list[] = $this->t('<strong>@label:</strong> @description', [
+        '@label' => $partLabels[$part],
+        '@description' => $partDescription,
+      ]);
+    }
+    $element['parts']['help']['#markup'] = '<ul><li>' . implode('</li><li>', $list) . '</li></ul></ul>';
+
+    return $element;
+  }
+
+  /**
+   * Change the format of values.
+   *
+   * FormBuilder has finished processing the input of children, now re-arrange
+   * the values.
+   *
+   * @param array $element
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *
+   * @return array
+   */
+  public static function afterBuildXyz(array $element, FormStateInterface $form_state) {
+    // Original parts container.
+    $values = NestedArray::getValue($form_state->getValues(), $element['#parents']);
+
+    // Remove the original parts values so they dont get saved in same structure
+    // as the form.
+    NestedArray::unsetValue($form_state->getValues(), $element['#parents']);
+
+    $parts = [];
+    $parts['all'] = !empty($values['all']);
+    $parts['frequencies'] = [];
+    foreach ($values['table'] as $frequency => $row) {
+      $enabledParts = array_keys(array_filter($row['parts']));
+      if ($row['setting'] === 'all-parts') {
+        $enabledParts[] = '*';
+      }
+      elseif ($row['setting'] === 'disabled') {
+        $enabledParts = [];
+      }
+
+      $parts['frequencies'][$frequency] = $enabledParts;
+    }
+
+    // Set the new value.
+    $form_state->setValue($element['#parents'], $parts);
 
     return $element;
   }
