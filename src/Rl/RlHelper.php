@@ -162,18 +162,18 @@ class RlHelper implements DateRecurHelperInterface {
 
     $generator = $this->generateOccurrences($rangeStart, $rangeEnd);
     if (isset($limit)) {
-      if (!is_int($limit) || $limit <= 0) {
-        // Limit must be a number and more than one.
+      if (!is_int($limit) || $limit < 0) {
+        // Limit must be a number and more than zero.
         throw new \InvalidArgumentException('Invalid count limit.');
       }
 
       // Generate occurrences until the limit is reached.
       $occurrences = [];
       foreach ($generator as $value) {
-        $occurrences[] = $value;
         if (count($occurrences) >= $limit) {
           break;
         }
+        $occurrences[] = $value;
       }
       return $occurrences;
     }

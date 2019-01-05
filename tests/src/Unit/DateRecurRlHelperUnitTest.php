@@ -17,6 +17,88 @@ use Drupal\Tests\UnitTestCase;
 class DateRecurRlHelperUnitTest extends UnitTestCase {
 
   /**
+   * Test occurrence generation with range limiters.
+   *
+   * @covers ::getOccurrences
+   * @covers ::generateOccurrences
+   */
+  public function testOccurrence() {
+    $helper = $this->createHelper(
+      'FREQ=DAILY;COUNT=1',
+      new \DateTime('2am 14 April 2014'),
+      new \DateTime('4am 14 April 2014')
+    );
+
+    // Test out of range (before).
+    $occurrences = $helper->getOccurrences(
+      new \DateTime('1am 14 April 2014'),
+      new \DateTime('1:30am 14 April 2014')
+    );
+    $this->assertCount(0, $occurrences);
+
+    // Test out of range (after).
+    $occurrences = $helper->getOccurrences(
+      new \DateTime('4:30am 14 April 2014'),
+      new \DateTime('5am 14 April 2014')
+    );
+    $this->assertCount(0, $occurrences);
+
+    // Test in range (intersects occurrence start).
+    $occurrences = $helper->getOccurrences(
+      new \DateTime('1am 14 April 2014'),
+      new \DateTime('3am 14 April 2014')
+    );
+    $this->assertCount(1, $occurrences);
+
+    // Test in range (exact).
+    $occurrences = $helper->getOccurrences(
+      new \DateTime('2am 14 April 2014'),
+      new \DateTime('4am 14 April 2014')
+    );
+    $this->assertCount(1, $occurrences);
+
+    // Test in range (within).
+    $occurrences = $helper->getOccurrences(
+      new \DateTime('2:30am 14 April 2014'),
+      new \DateTime('3:30am 14 April 2014')
+    );
+    $this->assertCount(1, $occurrences);
+
+    // Test in range (intersects occurrence end).
+    $occurrences = $helper->getOccurrences(
+      new \DateTime('3am 14 April 2014'),
+      new \DateTime('5am 14 April 2014')
+    );
+    $this->assertCount(1, $occurrences);
+
+    // Test in range but zero limit.
+    $occurrences = $helper->getOccurrences(
+      new \DateTime('1am 14 April 2014'),
+      new \DateTime('3am 14 April 2014'),
+      0
+    );
+    $this->assertCount(0, $occurrences);
+  }
+
+  /**
+   * Tests invalid argument for limit.
+   */
+  public function testInvalidLimit() {
+    $helper = $this->createHelper(
+      'FREQ=DAILY;COUNT=10',
+      new \DateTime('2am 14 April 2014'),
+      new \DateTime('4am 14 April 2014')
+    );
+
+    $this->setExpectedException(\InvalidArgumentException::class, 'Invalid count limit.');
+    $helper->getOccurrences(
+      new \DateTime('1am 14 April 2014'),
+      new \DateTime('3am 14 April 2014'),
+      -1
+    );
+  }
+
+  /**
    * Tests frequency method of rules returned by helper.
    */
   public function testFrequency() {
@@ -83,7 +165,7 @@ foobar';
    */
   protected function createHelper($string, \DateTimeInterface $dtStart, \DateTimeInterface $dtStartEnd = NULL) {
     // @todo convert to splat for PHP5.6/7 version upgrade.
-    return RlHelper::createInstance($string, $dtStart);
+    return RlHelper::createInstance($string, $dtStart, $dtStartEnd);
   }
 
 }
