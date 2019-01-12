@@ -5,6 +5,7 @@
  * Contains hooks for date_recur module.
  */
 
+use Drupal\Core\Render\Element;
 use Drupal\date_recur\DateRecurCachedHooks;
 use Drupal\date_recur\DateRecurViewsHooks;
 use Drupal\field\FieldStorageConfigInterface;
@@ -52,4 +53,37 @@ function date_recur_views_data_alter(array &$data) {
   /** @var \Drupal\date_recur\DateRecurViewsHooks $viewsHooks */
   $viewsHooks = \Drupal::classResolver(DateRecurViewsHooks::class);
   $viewsHooks->viewsDataAlter($data);
+}
+
+/**
+ * Template preprocessor for 'date_recur_settings_frequency_table'.
+ *
+ * @param array $variables
+ *   An associative array containing:
+ *   - element: An associative array containing a Form API structure to be
+ *     rendered as a table.
+ */
+function template_preprocess_date_recur_settings_frequency_table(array &$variables) {
+  $partTitles = [];
+
+  // Transfer elements to 'table' key so they can be iterated on without
+  // clashing with '#' elements.
+  $variables['table'] = [];
+  foreach (Element::children($variables['element']) as $key) {
+    $variables['table'][$key] = $variables['element'][$key];
+
+    $row = &$variables['table'][$key];
+    foreach (Element::children($row['parts']) as $rowKey) {
+      $row['parts']['parts'][$rowKey] = $row['parts'][$rowKey];
+      unset($row['parts'][$rowKey]);
+
+      foreach ($row['parts']['parts'] as $part) {
+        $partTitles[] = $part['#title'];
+      }
+    }
+
+    unset($variables['element'][$key]);
+  }
+
+  $variables['all_parts'] = array_unique($partTitles);
 }

@@ -1,5 +1,7 @@
 <?php
 
+// @codingStandardsIgnoreFile
+
 namespace Drupal\date_recur\Rl;
 
 use Drupal\Core\StringTranslation\StringTranslationTrait;

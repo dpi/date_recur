@@ -12,6 +12,10 @@ field.value.date_recur:
 field.storage_settings.date_recur:
   type: field.storage_settings.daterange
   label: 'Date recur settings'
+  mapping:
+    rrule_max_length:
+      type: integer
+      label: 'Maximum character length of RRULE'
 
 field.field_settings.date_recur:
   type: mapping
@@ -20,6 +24,21 @@ field.field_settings.date_recur:
     precreate:
       type: string
       label: 'Precreate interval'
+    parts:
+      type: mapping
+      mapping:
+        all:
+          type: boolean
+          label: 'Explicitly enable all frequencies and parts'
+        frequencies:
+          type: sequence
+          label: 'Frequencies'
+          sequence:
+            type: sequence
+            label: 'An array of enabled parts for the frequency.'
+            sequence:
+              type: string
+              label: 'A part.'
 
 field.formatter.settings.date_recur_basic_formatter:
   type: field.formatter.settings.daterange_default

@@ -56,7 +56,13 @@ class RlHelper implements DateRecurHelperInterface {
     ];
 
     $lines = explode("\n", $string);
-    foreach ($lines as $line) {
+    foreach ($lines as $n => $line) {
+      $line = trim($line);
+
+      if (FALSE === strpos($line, ':')) {
+        throw new DateRecurHelperArgumentException(sprintf('Multiline RRULE must be prefixed with either: RRULE, EXDATE, EXRULE, or RDATE. Missing for line %s', $n + 1));
+      }
+
       list($part, $partValue) = explode(':', $line, 2);
       if (!isset($parts[$part])) {
         throw new DateRecurHelperArgumentException("Unsupported line: " . $part);
@@ -105,7 +111,10 @@ class RlHelper implements DateRecurHelperInterface {
   public function getRules() {
     return array_map(
       function (RlRRule $rule) {
-        return new RlDateRecurRule($rule->getRule());
+        // RL returns all parts, even if no values originally provided. Filter
+        // out the useless parts.
+        $parts = array_filter($rule->getRule());
+        return new RlDateRecurRule($parts);
       },
       $this->set->getRRules()
     );
@@ -153,18 +162,18 @@ class RlHelper implements DateRecurHelperInterface {
 
     $generator = $this->generateOccurrences($rangeStart, $rangeEnd);
     if (isset($limit)) {
-      if (!is_int($limit) || $limit <= 0) {
-        // Limit must be a number and more than one.
+      if (!is_int($limit) || $limit < 0) {
+        // Limit must be a number and more than zero.
         throw new \InvalidArgumentException('Invalid count limit.');
       }
 
       // Generate occurrences until the limit is reached.
       $occurrences = [];
       foreach ($generator as $value) {
-        $occurrences[] = $value;
         if (count($occurrences) >= $limit) {
           break;
         }
+        $occurrences[] = $value;
       }
       return $occurrences;
     }

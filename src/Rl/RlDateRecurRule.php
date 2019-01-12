@@ -25,7 +25,17 @@ final class RlDateRecurRule implements DateRecurRuleInterface {
    *   RlDateRecurRule objects is reserved by date_recur module.
    */
   public function __construct(array $parts) {
+    if (!isset($parts['FREQ'])) {
+      throw new \Exception('Frequency must be defined.');
+    }
     $this->parts = $parts;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function getFrequency() {
+    return $this->parts['FREQ'];
   }
 
   /**

@@ -10,32 +10,6 @@ use Drupal\Core\Datetime\DrupalDateTime;
 class DateRecurUtility {
 
   /**
-   * Downgrades a DrupalDateTime object to PHP date time.
-   *
-   * Useful in situations where object comparison is used.
-   *
-   * @param \Drupal\Core\Datetime\DrupalDateTime $drupalDateTime
-   *   A Drupal datetime object.
-   *
-   * @see https://www.drupal.org/node/2936388
-   *
-   * @return \Datetime
-   *   A PHP datetime object.
-   *
-   * @deprecated remove when at least Drupal 8.6 is minimum supported version.
-   *   Use \Drupal\Core\Datetime\DrupalDateTime::getPhpDateTime() instead.
-   *
-   * @internal
-   */
-  public static function toPhpDateTime(DrupalDateTime $drupalDateTime) {
-    $date = new \Datetime($drupalDateTime->format('r'));
-    // Using 'r' format overrides whichever timezone is passed as 2nd arg, set
-    // it here instead.
-    $date->setTimezone($drupalDateTime->getTimezone());
-    return $date;
-  }
-
-  /**
    * Get the smallest date given a granularity and input.
    *
    * @param string $granularity
@@ -91,26 +65,16 @@ class DateRecurUtility {
     assert(in_array($end, ['start', 'end']));
     $start = $end === 'start';
 
-    $granularityFormats = [
-      'year' => 'Y',
-      'month' => 'Y-m',
-      'day' => 'Y-m-d',
-      'second' => 'Y-m-d\TH:i:s',
-    ];
-    $format = $granularityFormats[$granularity];
+    $granularityFormatsMap = DateRecurGranularityMap::GRANULARITY_DATE_FORMATS;
+    $format = $granularityFormatsMap[$granularity];
 
     // PHP fills missing granularity parts with current datetime. Use this
     // object to reconstruct the date at the beginning of the granularity
     // period.
     $knownDate = \DateTime::createFromFormat($format, $value, $timezone);
 
-    $granularityComparison = [
-      1 => 'year',
-      2 => 'month',
-      3 => 'day',
-      6 => 'second',
-    ];
-    $granularityInt = array_search($granularity, $granularityComparison);
+    $granularityComparison = DateRecurGranularityMap::GRANULARITY;
+    $granularityInt = $granularityComparison[$granularity];
 
     $dateParts = [
       'year' => (int) $knownDate->format('Y'),
@@ -130,7 +94,7 @@ class DateRecurUtility {
       $date = DrupalDateTime::createFromArray($dateParts, $date->getTimezone());
     }
 
-    return static::toPhpDateTime($date);
+    return $date->getPhpDateTime();
   }
 
 }

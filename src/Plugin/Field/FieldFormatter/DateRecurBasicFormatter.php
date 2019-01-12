@@ -92,8 +92,8 @@ class DateRecurBasicFormatter extends DateRangeDefaultFormatter {
       $configuration['view_mode'],
       $configuration['third_party_settings'],
       $container->get('date.formatter'),
-      $container->get('entity.manager')->getStorage('date_format'),
-      $container->get('entity.manager')->getStorage('date_recur_interpreter')
+      $container->get('entity_type.manager')->getStorage('date_format'),
+      $container->get('entity_type.manager')->getStorage('date_recur_interpreter')
     );
   }
 
@@ -402,8 +402,8 @@ class DateRecurBasicFormatter extends DateRangeDefaultFormatter {
     else {
       // Start date and end date are different.
       $this->formatType = $startDate->format('Ymd') == $endDate->format('Ymd') ?
-        $this->getSetting('occurrence_format_type') :
-        $this->getSetting('same_end_date_format_type');
+        $this->getSetting('same_end_date_format_type') :
+        $this->getSetting('occurrence_format_type');
       $endDateString = $this->buildDateWithIsoAttribute($endDate);
       return [
         'start_date' => $startDateString,

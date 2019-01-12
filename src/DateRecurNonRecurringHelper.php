@@ -53,6 +53,21 @@ class DateRecurNonRecurringHelper implements DateRecurHelperInterface {
    */
   public function generateOccurrences(\DateTimeInterface $rangeStart = NULL, \DateTimeInterface $rangeEnd = NULL) {
     foreach ($this->occurrences as $occurrence) {
+      $occurrenceStart = $occurrence->getStart();
+      $occurrenceEnd = $occurrence->getEnd();
+
+      if ($rangeStart) {
+        if ($occurrenceStart < $rangeStart && $occurrenceEnd < $rangeStart) {
+          continue;
+        }
+      }
+
+      if ($rangeEnd) {
+        if ($occurrenceStart > $rangeEnd && $occurrenceEnd > $rangeEnd) {
+          break;
+        }
+      }
+
       yield $occurrence;
     }
   }
@@ -61,7 +76,18 @@ class DateRecurNonRecurringHelper implements DateRecurHelperInterface {
    * {@inheritdoc}
    */
   public function getOccurrences(\DateTimeInterface $rangeStart = NULL, \DateTimeInterface $rangeEnd = NULL, $limit = NULL) {
-    return $this->occurrences;
+    if (isset($limit) && (!is_int($limit) || $limit < 0)) {
+      // Limit must be a number and more than one.
+      throw new \InvalidArgumentException('Invalid count limit.');
+    }
+
+    // There can either by zero or one occurrence generated for non-recurring
+    // generator.
+    if (isset($limit) && $limit === 0) {
+      return [];
+    }
+
+    return iterator_to_array($this->generateOccurrences($rangeStart, $rangeEnd));
   }
 
   /**

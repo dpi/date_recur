@@ -7,6 +7,7 @@ use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Entity\EntityFieldManagerInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
+use Drupal\date_recur\DateRecurGranularityMap;
 use Drupal\date_recur\DateRecurOccurrences;
 use Drupal\date_recur\DateRecurUtility;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
@@ -255,21 +256,10 @@ class DateRecurFilter extends FilterPluginBase {
     $optionValueMax = $pluginOptions['value_max'];
     $valueMax = isset($optionValueMax) ? \DateTime::createFromFormat(\DATE_ISO8601, $optionValueMax) : NULL;
 
-    $granularityRegexMap = [
-      'year' => '/^\d{4}$/',
-      'month' => '/^\d{4}\-\d{2}$/',
-      'day' => '/^\d{4}\-\d{2}-\d{2}$/',
-      'second' => '/^\d{4}\-\d{2}\-\d{2}\T\d{2}:\d{2}:\d{2}$/',
-    ];
-
-    $granularityFormatsMap = [
-      'year' => 'Y',
-      'month' => 'Y-m',
-      'day' => 'Y-m-d',
-      'second' => 'Y-m-d\TH:i:s',
-    ];
+    $granularityFormatsMap = DateRecurGranularityMap::GRANULARITY_DATE_FORMATS;
     $format = $granularityFormatsMap[$granularity];
 
+    $granularityRegexMap = DateRecurGranularityMap::GRANULARITY_EXPRESSIONS;
     $regex = $granularityRegexMap[$granularity];
     $value = $element['#value'];
     // Use the current users timezone.
@@ -300,13 +290,8 @@ class DateRecurFilter extends FilterPluginBase {
     else {
       $now = new DrupalDateTime();
       $sample = $now->format($format);
-      $granularityExpectedFormatMessages = [
-        'year' => \t('YYYY (Year, for example: @sample)', ['@sample' => $sample]),
-        'month' => \t('YYYY-MM (Year-month, for example: @sample)', ['@sample' => $sample]),
-        'day' => \t('YYYY-MM-DD (Year-month-day, for example: @sample)', ['@sample' => $sample]),
-        'second' => \t('YYYY-MM-DDTHH:MM:SS (for example: @sample)', ['@sample' => $sample]),
-      ];
 
+      $granularityExpectedFormatMessages = DateRecurGranularityMap::granularityExpectedFormatMessages($sample);
       $form_state->setError($element, \t('Value format is incorrect. Expected format: @example', [
         '@example' => $granularityExpectedFormatMessages[$granularity],
       ]));
@@ -346,12 +331,7 @@ class DateRecurFilter extends FilterPluginBase {
    * {@inheritdoc}
    */
   public function adminSummary() {
-    $granularityLabels = [
-      'year' => $this->t('Absolute year'),
-      'month' => $this->t('Absolute month'),
-      'day' => $this->t('Absolute day'),
-      'second' => $this->t('Datetime'),
-    ];
+    $granularityLabels = DateRecurGranularityMap::granularityLabels();
     $granularity = $this->options['value_granularity'];
     return $granularityLabels[$granularity];
   }

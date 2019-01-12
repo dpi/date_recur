@@ -2,7 +2,9 @@
 
 namespace Drupal\date_recur\Plugin\Field\FieldType;
 
+use Drupal\Component\Utility\NestedArray;
 use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
@@ -10,6 +12,7 @@ use Drupal\Core\TypedData\DataDefinition;
 use Drupal\Core\TypedData\ListDataDefinition;
 use Drupal\date_recur\DateRecurHelper;
 use Drupal\date_recur\DateRecurNonRecurringHelper;
+use Drupal\date_recur\DateRecurRruleMap;
 use Drupal\date_recur\DateRecurUtility;
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
 use Drupal\date_recur\Plugin\Field\DateRecurOccurrencesComputed;
@@ -20,14 +23,44 @@ use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeItem;
  *
  * @FieldType(
  *   id = "date_recur",
- *   label = @Translation("Date Recur"),
- *   description = @Translation("Recurring dates field"),
+ *   label = @Translation("Recurring dates field"),
+ *   description = @Translation("Field for storing recurring dates."),
  *   default_widget = "date_recur_basic_widget",
  *   default_formatter = "date_recur_basic_formatter",
- *   list_class = "\Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList"
+ *   list_class = "\Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList",
+ *   constraints = {
+ *     "DateRecurRrule" = {},
+ *     "DateRecurRuleParts" = {},
+ *   }
  * )
  */
 class DateRecurItem extends DateRangeItem {
+
+  /**
+   * Part used represent when all parts in a frequency are supported.
+   */
+  const PART_SUPPORTS_ALL = '*';
+
+  /**
+   * Value for frequency setting: 'Disabled'.
+   *
+   * @internal will be made protected.
+   */
+  const FREQUENCY_SETTINGS_DISABLED = 'disabled';
+
+  /**
+   * Value for frequency setting: 'All parts'.
+   *
+   * @internal will be made protected.
+   */
+  const FREQUENCY_SETTINGS_PARTS_ALL = 'all-parts';
+
+  /**
+   * Value for frequency setting: 'Specify parts'.
+   *
+   * @internal will be made protected.
+   */
+  const FREQUENCY_SETTINGS_PARTS_PARTIAL = 'some-parts';
 
   /**
    * The date recur helper.
@@ -45,10 +78,16 @@ class DateRecurItem extends DateRangeItem {
     $properties['rrule'] = DataDefinition::create('string')
       ->setLabel(new TranslatableMarkup('RRule'))
       ->setRequired(FALSE);
+    $rruleMaxLength = $field_definition->getSetting('rrule_max_length');
+    assert(empty($rruleMaxLength) || (is_numeric($rruleMaxLength) && $rruleMaxLength > 0));
+    if (!empty($rruleMaxLength)) {
+      $properties['rrule']->addConstraint('Length', ['max' => $rruleMaxLength]);
+    }
 
     $properties['timezone'] = DataDefinition::create('string')
       ->setLabel(new TranslatableMarkup('Timezone'))
-      ->setRequired(FALSE);
+      ->setRequired(TRUE)
+      ->addConstraint('DateRecurTimeZone');
 
     $properties['infinite'] = DataDefinition::create('boolean')
       ->setLabel(new TranslatableMarkup('Whether the RRule is an infinite rule. Derived value from RRULE.'))
@@ -89,17 +128,49 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
+  public static function defaultStorageSettings() {
+    return [
+      'rrule_max_length' => 256,
+    ] + parent::defaultStorageSettings();
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public static function defaultFieldSettings() {
     return [
       // @todo needs settings tests.
       'precreate' => 'P2Y',
+      'parts' => [
+        'all' => TRUE,
+        'frequencies' => [],
+      ],
     ] + parent::defaultFieldSettings();
   }
 
   /**
    * {@inheritdoc}
    */
+  public function storageSettingsForm(array &$form, FormStateInterface $form_state, $has_data) {
+    $element = parent::storageSettingsForm($form, $form_state, $has_data);
+
+    $element['rrule_max_length'] = [
+      '#type' => 'number',
+      '#title' => $this->t('Maximum character length of RRULE'),
+      '#description' => $this->t('Define the maximum characters a RRULE can contain.'),
+      '#default_value' => $this->getSetting('rrule_max_length'),
+      '#min' => 0,
+    ];
+
+    return $element;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
   public function fieldSettingsForm(array $form, FormStateInterface $form_state) {
+    // Its not possible to locate the parent from FieldConfigEditForm.
+    $elementParts = ['settings'];
     $element = parent::fieldSettingsForm($form, $form_state);
 
     // @todo Needs UI tests.
@@ -115,6 +186,145 @@ class DateRecurItem extends DateRangeItem {
       '#options' => $options,
       '#default_value' => $this->getSetting('precreate'),
     ];
+
+    $element['parts'] = [
+      '#type' => 'container',
+    ];
+    $element['parts']['#after_build'][] = [get_class($this), 'partsAfterBuild'];
+
+    $allPartsSettings = $this->getSetting('parts');
+    $element['parts']['all'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Allow all frequency and parts'),
+      '#default_value' => isset($allPartsSettings['all']) ? $allPartsSettings['all'] : TRUE,
+    ];
+    $parents = array_merge($elementParts, ['parts', 'all']);
+    // The form 'name' attribute of the 'all' parts checkbox above.
+    $allPartsCheckboxName = $parents[0] . '[' . implode('][', array_slice($parents, 1)) . ']';
+
+    $frequencyLabels = DateRecurRruleMap::frequencyLabels();
+    $partLabels = DateRecurRruleMap::partLabels();
+
+    $partsCheckboxes = [];
+    foreach (DateRecurRruleMap::PARTS as $part) {
+      $partsCheckboxes[$part] = [
+        '#type' => 'checkbox',
+        '#title' => $partLabels[$part],
+      ];
+    }
+    $settingsOptions = [
+      static::FREQUENCY_SETTINGS_DISABLED => $this->t('Disabled'),
+      static::FREQUENCY_SETTINGS_PARTS_ALL => $this->t('All parts'),
+      static::FREQUENCY_SETTINGS_PARTS_PARTIAL => $this->t('Specify parts'),
+    ];
+
+    // Table is a container so visibility states can be added.
+    $element['parts']['table'] = [
+      '#theme' => 'date_recur_settings_frequency_table',
+      '#type' => 'container',
+      '#states' => [
+        'visible' => [
+          ':input[name="' . $allPartsCheckboxName . '"]' => ['checked' => FALSE],
+        ],
+      ],
+    ];
+    foreach (DateRecurRruleMap::FREQUENCIES as $frequency) {
+      $row = [];
+      $row['frequency']['#markup'] = $frequencyLabels[$frequency];
+
+      $parents = array_merge($elementParts, [
+        'parts',
+        'table',
+        $frequency,
+        'setting',
+      ]);
+      // Constructs a name that looks like
+      // settings[parts][table][MINUTELY][setting].
+      $settingsCheckboxName = $parents[0] . '[' . implode('][', array_slice($parents, 1)) . ']';
+
+      $enabledParts = isset($allPartsSettings['frequencies'][$frequency]) ? $allPartsSettings['frequencies'][$frequency] : [];
+      $defaultSetting = NULL;
+      if (count($enabledParts) === 0) {
+        $defaultSetting = static::FREQUENCY_SETTINGS_DISABLED;
+      }
+      elseif (in_array(static::PART_SUPPORTS_ALL, $enabledParts)) {
+        $defaultSetting = static::FREQUENCY_SETTINGS_PARTS_ALL;
+      }
+      elseif (count($enabledParts) > 0) {
+        $defaultSetting = static::FREQUENCY_SETTINGS_PARTS_PARTIAL;
+      }
+
+      $row['setting'] = [
+        '#type' => 'radios',
+        '#options' => $settingsOptions,
+        '#required' => TRUE,
+        '#default_value' => $defaultSetting,
+      ];
+
+      $row['parts'] = $partsCheckboxes;
+      foreach ($row['parts'] as $part => &$partsCheckbox) {
+        $partsCheckbox['#states']['visible'][] = [
+          ':input[name="' . $settingsCheckboxName . '"]' => ['value' => static::FREQUENCY_SETTINGS_PARTS_PARTIAL],
+        ];
+        $partsCheckbox['#default_value'] = in_array($part, $enabledParts, TRUE);
+      }
+
+      $element['parts']['table'][$frequency] = $row;
+    }
+
+    $list = [];
+    $partLabels = DateRecurRruleMap::partLabels();
+    foreach (DateRecurRruleMap::partDescriptions() as $part => $partDescription) {
+      $list[] = $this->t('<strong>@label:</strong> @description', [
+        '@label' => $partLabels[$part],
+        '@description' => $partDescription,
+      ]);
+    }
+    $element['parts']['help']['#markup'] = '<ul><li>' . implode('</li><li>', $list) . '</li></ul></ul>';
+
+    return $element;
+  }
+
+  /**
+   * After build used to format of submitted values.
+   *
+   * FormBuilder has finished processing the input of children, now re-arrange
+   * the values.
+   *
+   * @param array $element
+   *   An associative array containing the structure of the element.
+   * @param \Drupal\Core\Form\FormStateInterface $form_state
+   *   The current state of the form.
+   *
+   * @return array
+   *   The new structure of the element.
+   */
+  public static function partsAfterBuild(array $element, FormStateInterface $form_state) {
+    // Original parts container.
+    $values = NestedArray::getValue($form_state->getValues(), $element['#parents']);
+
+    // Remove the original parts values so they dont get saved in same structure
+    // as the form.
+    NestedArray::unsetValue($form_state->getValues(), $element['#parents']);
+
+    $parts = [];
+    $parts['all'] = !empty($values['all']);
+    $parts['frequencies'] = [];
+    foreach ($values['table'] as $frequency => $row) {
+      $enabledParts = array_keys(array_filter($row['parts']));
+      if ($row['setting'] === static::FREQUENCY_SETTINGS_PARTS_ALL) {
+        $enabledParts[] = static::PART_SUPPORTS_ALL;
+      }
+      elseif ($row['setting'] === static::FREQUENCY_SETTINGS_DISABLED) {
+        $enabledParts = [];
+      }
+      // Sort in order so config always looks consistent.
+      sort($enabledParts);
+      $parts['frequencies'][$frequency] = $enabledParts;
+    }
+
+    // Set the new value.
+    $form_state->setValue($element['#parents'], $parts);
 
     return $element;
   }
@@ -175,7 +385,10 @@ class DateRecurItem extends DateRangeItem {
     }
 
     try {
-      $timeZone = new \DateTimeZone($this->timezone);
+      $timeZoneString = $this->timezone;
+      // If its not a string then cast it so a TypeError is not thrown. An empty
+      // string will cause the exception to be thrown.
+      $timeZone = new \DateTimeZone(is_string($timeZoneString) ? $timeZoneString : '');
     }
     catch (\Exception $exception) {
       throw new DateRecurHelperArgumentException('Invalid time zone');
@@ -184,14 +397,14 @@ class DateRecurItem extends DateRangeItem {
     $startDate = NULL;
     $startDateEnd = NULL;
     if ($this->start_date instanceof DrupalDateTime) {
-      $startDate = DateRecurUtility::toPhpDateTime($this->start_date);
+      $startDate = $this->start_date->getPhpDateTime();
       $startDate->setTimezone($timeZone);
     }
     else {
       throw new DateRecurHelperArgumentException('Start date is required.');
     }
     if ($this->end_date instanceof DrupalDateTime) {
-      $startDateEnd = DateRecurUtility::toPhpDateTime($this->end_date);
+      $startDateEnd = $this->end_date->getPhpDateTime();
       $startDateEnd->setTimezone($timeZone);
     }
     $this->helper = $this->isRecurring() ?
@@ -210,6 +423,20 @@ class DateRecurItem extends DateRangeItem {
       parent::isEmpty()
       && ($rrule === NULL || $rrule === '')
       && ($timeZone === NULL || $timeZone === '');
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public static function generateSampleValue(FieldDefinitionInterface $field_definition) {
+    $values = parent::generateSampleValue($field_definition);
+
+    $timeZoneList = timezone_identifiers_list();
+    $values['timezone'] = $timeZoneList[array_rand($timeZoneList)];
+    $values['rrule'] = 'FREQ=DAILY;COUNT=' . rand(2, 10);
+    $values['infinite'] = FALSE;
+
+    return $values;
   }
 
 }

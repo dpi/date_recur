@@ -413,6 +413,38 @@ class DateRecurBasicFormatterTest extends KernelTestBase {
   }
 
   /**
+   * Tests formatter output for same start/end date.
+   */
+  public function testFormatterSameDay() {
+    $dateFormatSameDate = DateFormat::create(['id' => $this->randomMachineName(), 'pattern' => '\s\a\m\e \d\a\t\e']);
+    $dateFormatSameDate->save();
+    $settings = [
+      'format_type' => $this->dateFormat->id(),
+      'occurrence_format_type' => $this->dateFormat->id(),
+      'same_end_date_format_type' => $dateFormatSameDate->id(),
+      'interpreter' => $this->interpreter->id(),
+    ];
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      'value' => '2014-06-15T00:00:00',
+      'end_value' => '2014-06-15T23:59:59',
+      'rrule' => '',
+      'infinite' => '0',
+      'timezone' => 'Australia/Sydney',
+    ];
+    $this->renderFormatterSettings($entity, $settings);
+
+    $dates = $this->cssSelect('time');
+    $this->assertCount(2, $dates);
+
+    // First time is start date.
+    $this->assertEquals('Sun, 15 Jun 2014 10:00:00 +1000', (string) $dates[0]);
+
+    // Second time is end date.
+    $this->assertEquals('same date', (string) $dates[1]);
+  }
+
+  /**
    * Renders the date recur formatter and sets the HTML ready to be asserted.
    *
    * @param \Drupal\date_recur_entity_test\Entity\DrEntityTest $entity

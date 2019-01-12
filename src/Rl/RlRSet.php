@@ -1,5 +1,7 @@
 <?php
 
+// @codingStandardsIgnoreFile
+
 namespace Drupal\date_recur\Rl;
 
 use RRule\RRule;

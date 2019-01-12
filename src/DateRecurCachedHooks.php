@@ -38,6 +38,9 @@ class DateRecurCachedHooks {
       'date_recur_basic_widget' => [
         'render element' => 'element',
       ],
+      'date_recur_settings_frequency_table' => [
+        'render element' => 'element',
+      ],
       'date_recur_basic_formatter' => [
         'variables' => [
           'date' => NULL,

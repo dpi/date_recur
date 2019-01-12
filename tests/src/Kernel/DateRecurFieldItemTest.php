@@ -3,7 +3,11 @@
 namespace Drupal\Tests\date_recur\Kernel;
 
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
+use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\date_recur_entity_test\Entity\DrEntityTest;
+use Drupal\entity_test\Entity\EntityTest;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\field\Entity\FieldStorageConfig;
 use Drupal\KernelTests\KernelTestBase;
 
 /**
@@ -70,7 +74,144 @@ class DateRecurFieldItemTest extends KernelTestBase {
   }
 
   /**
-   * Test exception thrown if time zone is missing.
+   * Tests no violations when time zone is recognised by PHP.
+   */
+  public function testTimeZoneConstraintValid() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      'value' => '2014-06-15T23:00:00',
+      'end_value' => '2014-06-16T07:00:00',
+      'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3',
+      'infinite' => '0',
+      'timezone' => 'Australia/Sydney',
+    ];
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->dr->validate();
+    $this->assertEquals(0, $violations->count());
+  }
+
+  /**
+   * Tests violations when time zone is not a recognised by PHP.
+   */
+  public function testTimeZoneConstraintInvalidZone() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      'value' => '2014-06-15T23:00:00',
+      'end_value' => '2014-06-16T07:00:00',
+      'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3',
+      'infinite' => '0',
+      'timezone' => 'Mars/Mariner',
+    ];
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->dr->validate();
+    $this->assertEquals(1, $violations->count());
+
+    $violation = $violations->get(0);
+    $message = (string) $violation->getMessage();
+    $this->assertEquals('<em class="placeholder">Mars/Mariner</em> is not a valid time zone.', $message);
+  }
+
+  /**
+   * Tests violations when time zone is not a string.
+   */
+  public function testTimeZoneConstraintInvalidFormat() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      'value' => '2014-06-15T23:00:00',
+      'end_value' => '2014-06-16T07:00:00',
+      'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3',
+      'infinite' => '0',
+      'timezone' => new \StdClass(),
+    ];
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->dr->validate();
+    $this->assertGreaterThanOrEqual(1, $violations->count());
+
+    $expectedMessage = 'This value should be of the correct primitive type.';
+    $list = [];
+    foreach ($violations as $violation) {
+      if ((string) $violation->getMessage() === $expectedMessage) {
+        $list[] = $violation;
+      }
+    }
+    $this->assertCount(1, $list);
+  }
+
+  /**
+   * Tests violations when RRULE over max length.
+   */
+  public function testRruleMaxLengthConstraint() {
+    $this->installEntitySchema('entity_test');
+
+    $field_storage = FieldStorageConfig::create([
+      'entity_type' => 'entity_test',
+      'field_name' => 'foo',
+      'type' => 'date_recur',
+      'settings' => [
+        'datetime_type' => DateRecurItem::DATETIME_TYPE_DATETIME,
+        // Test a super short length.
+        'rrule_max_length' => 20,
+      ],
+    ]);
+    $field_storage->save();
+
+    $field = [
+      'field_name' => 'foo',
+      'entity_type' => 'entity_test',
+      'bundle' => 'entity_test',
+    ];
+    FieldConfig::create($field)->save();
+
+    $entity = EntityTest::create();
+    $entity->foo = [
+      'value' => '2014-06-15T23:00:00',
+      'end_value' => '2014-06-16T07:00:00',
+      'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=3',
+      'infinite' => '0',
+      'timezone' => 'Australia/Sydney',
+    ];
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->foo->validate();
+    $this->assertEquals(1, $violations->count());
+
+    $violation = $violations->get(0);
+    $message = strip_tags((string) $violation->getMessage());
+    $this->assertEquals('This value is too long. It should have 20 characters or less.', $message);
+  }
+
+  /**
+   * Tests when an invalid RRULE is passed.
+   */
+  public function testRruleInvalidConstraint() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      'value' => '2014-06-15T23:00:00',
+      'end_value' => '2014-06-16T07:00:00',
+      'rrule' => $this->randomMachineName(),
+      'infinite' => '0',
+      'timezone' => 'Australia/Sydney',
+    ];
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->dr->validate();
+    $this->assertGreaterThanOrEqual(1, $violations->count());
+
+    $expectedMessage = 'Invalid RRULE.';
+    $list = [];
+    foreach ($violations as $violation) {
+      if ((string) $violation->getMessage() === $expectedMessage) {
+        $list[] = $violation;
+      }
+    }
+    $this->assertCount(1, $list);
+  }
+
+  /**
+   * Test exception thrown if time zone is missing when getting a item helper.
    */
   public function testTimeZoneMissing() {
     $entity = DrEntityTest::create();
@@ -87,7 +228,7 @@ class DateRecurFieldItemTest extends KernelTestBase {
   }
 
   /**
-   * Test exception thrown if time zone is invalid.
+   * Test exception thrown for invalid time zones when getting a item helper.
    */
   public function testTimeZoneInvalid() {
     $entity = DrEntityTest::create();
@@ -101,6 +242,23 @@ class DateRecurFieldItemTest extends KernelTestBase {
     ];
     $this->setExpectedException(DateRecurHelperArgumentException::class, 'Invalid time zone');
     $entity->dr[0]->getHelper();
+  }
+
+  /**
+   * Test field item generation.
+   *
+   * @covers ::generateSampleValue
+   */
+  public function testGenerateSampleValue() {
+    $entity = DrEntityTest::create();
+    $entity->dr->generateSampleItems();
+    $this->assertRegExp('/^FREQ=DAILY;COUNT=\d{1,2}$/', $entity->dr->rrule);
+    $this->assertFalse($entity->dr->infinite);
+    $this->assertTrue(in_array($entity->dr->timezone, timezone_identifiers_list(), TRUE));
+
+    /** @var \Symfony\Component\Validator\ConstraintViolationListInterface $violations */
+    $violations = $entity->dr->validate();
+    $this->assertEquals(0, $violations->count());
   }
 
 }
