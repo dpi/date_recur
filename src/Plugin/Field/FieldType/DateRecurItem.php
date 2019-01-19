@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur\Plugin\Field\FieldType;
 
 use Drupal\Component\Utility\NestedArray;
@@ -11,6 +13,7 @@ use Drupal\Core\StringTranslation\TranslatableMarkup;
 use Drupal\Core\TypedData\DataDefinition;
 use Drupal\Core\TypedData\ListDataDefinition;
 use Drupal\date_recur\DateRecurHelper;
+use Drupal\date_recur\DateRecurHelperInterface;
 use Drupal\date_recur\DateRecurNonRecurringHelper;
 use Drupal\date_recur\DateRecurRruleMap;
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
@@ -32,34 +35,37 @@ use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeItem;
  *     "DateRecurRuleParts" = {},
  *   }
  * )
+ *
+ * @property \DateTime start_date
+ * @property \DateTime end_date
  */
 class DateRecurItem extends DateRangeItem {
 
   /**
    * Part used represent when all parts in a frequency are supported.
    */
-  const PART_SUPPORTS_ALL = '*';
+  public const PART_SUPPORTS_ALL = '*';
 
   /**
    * Value for frequency setting: 'Disabled'.
    *
    * @internal will be made protected.
    */
-  const FREQUENCY_SETTINGS_DISABLED = 'disabled';
+  public const FREQUENCY_SETTINGS_DISABLED = 'disabled';
 
   /**
    * Value for frequency setting: 'All parts'.
    *
    * @internal will be made protected.
    */
-  const FREQUENCY_SETTINGS_PARTS_ALL = 'all-parts';
+  public const FREQUENCY_SETTINGS_PARTS_ALL = 'all-parts';
 
   /**
    * Value for frequency setting: 'Specify parts'.
    *
    * @internal will be made protected.
    */
-  const FREQUENCY_SETTINGS_PARTS_PARTIAL = 'some-parts';
+  public const FREQUENCY_SETTINGS_PARTS_PARTIAL = 'some-parts';
 
   /**
    * The date recur helper.
@@ -71,7 +77,7 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
-  public static function propertyDefinitions(FieldStorageDefinitionInterface $field_definition) {
+  public static function propertyDefinitions(FieldStorageDefinitionInterface $field_definition): array {
     $properties = parent::propertyDefinitions($field_definition);
 
     $properties['rrule'] = DataDefinition::create('string')
@@ -103,7 +109,7 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
-  public static function schema(FieldStorageDefinitionInterface $field_definition) {
+  public static function schema(FieldStorageDefinitionInterface $field_definition): array {
     $schema = parent::schema($field_definition);
 
     $schema['columns']['rrule'] = [
@@ -127,7 +133,7 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
-  public static function defaultStorageSettings() {
+  public static function defaultStorageSettings(): array {
     return [
       'rrule_max_length' => 256,
     ] + parent::defaultStorageSettings();
@@ -136,7 +142,7 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
-  public static function defaultFieldSettings() {
+  public static function defaultFieldSettings(): array {
     return [
       // @todo needs settings tests.
       'precreate' => 'P2Y',
@@ -150,7 +156,8 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
-  public function storageSettingsForm(array &$form, FormStateInterface $form_state, $has_data) {
+  public function storageSettingsForm(array &$form, FormStateInterface $form_state, $has_data): array {
+    assert(is_bool($has_data));
     $element = parent::storageSettingsForm($form, $form_state, $has_data);
 
     $element['rrule_max_length'] = [
@@ -167,7 +174,7 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
-  public function fieldSettingsForm(array $form, FormStateInterface $form_state) {
+  public function fieldSettingsForm(array $form, FormStateInterface $form_state): array {
     // Its not possible to locate the parent from FieldConfigEditForm.
     $elementParts = ['settings'];
     $element = parent::fieldSettingsForm($form, $form_state);
@@ -195,7 +202,7 @@ class DateRecurItem extends DateRangeItem {
     $element['parts']['all'] = [
       '#type' => 'checkbox',
       '#title' => $this->t('Allow all frequency and parts'),
-      '#default_value' => isset($allPartsSettings['all']) ? $allPartsSettings['all'] : TRUE,
+      '#default_value' => $allPartsSettings['all'] ?? TRUE,
     ];
     $parents = array_merge($elementParts, ['parts', 'all']);
     // The form 'name' attribute of the 'all' parts checkbox above.
@@ -241,7 +248,7 @@ class DateRecurItem extends DateRangeItem {
       // settings[parts][table][MINUTELY][setting].
       $settingsCheckboxName = $parents[0] . '[' . implode('][', array_slice($parents, 1)) . ']';
 
-      $enabledParts = isset($allPartsSettings['frequencies'][$frequency]) ? $allPartsSettings['frequencies'][$frequency] : [];
+      $enabledParts = $allPartsSettings['frequencies'][$frequency] ?? [];
       $defaultSetting = NULL;
       if (count($enabledParts) === 0) {
         $defaultSetting = static::FREQUENCY_SETTINGS_DISABLED;
@@ -298,7 +305,7 @@ class DateRecurItem extends DateRangeItem {
    * @return array
    *   The new structure of the element.
    */
-  public static function partsAfterBuild(array $element, FormStateInterface $form_state) {
+  public static function partsAfterBuild(array $element, FormStateInterface $form_state): array {
     // Original parts container.
     $values = NestedArray::getValue($form_state->getValues(), $element['#parents']);
 
@@ -334,7 +341,7 @@ class DateRecurItem extends DateRangeItem {
    * @return string
    *   A date format string.
    */
-  public function getDateStorageFormat() {
+  public function getDateStorageFormat(): string {
     // @todo tests
     return $this->getSetting('datetime_type') == static::DATETIME_TYPE_DATE ? static::DATE_STORAGE_FORMAT : static::DATETIME_STORAGE_FORMAT;
   }
@@ -342,7 +349,7 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
-  public function preSave() {
+  public function preSave(): void {
     parent::preSave();
     try {
       $isInfinite = $this->getHelper()->isInfinite();
@@ -356,7 +363,7 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
-  public function setValue($values, $notify = TRUE) {
+  public function setValue($values, $notify = TRUE): void {
     // Cast infinite to boolean on load.
     $values['infinite'] = !empty($values['infinite']);
     parent::setValue($values, $notify);
@@ -368,7 +375,7 @@ class DateRecurItem extends DateRangeItem {
    * @return bool
    *   Whether the field value is recurring.
    */
-  public function isRecurring() {
+  public function isRecurring(): bool {
     return !empty($this->rrule);
   }
 
@@ -383,7 +390,7 @@ class DateRecurItem extends DateRangeItem {
    * @throws \Drupal\date_recur\Exception\DateRecurHelperArgumentException
    *   If a helper could not be created due to faulty field value.
    */
-  public function getHelper() {
+  public function getHelper(): DateRecurHelperInterface {
     if (isset($this->helper)) {
       return $this->helper;
     }
@@ -420,7 +427,7 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
-  public function isEmpty() {
+  public function isEmpty(): bool {
     $start_value = $this->get('value')->getValue();
     $end_value = $this->get('end_value')->getValue();
     return
@@ -434,7 +441,7 @@ class DateRecurItem extends DateRangeItem {
   /**
    * {@inheritdoc}
    */
-  public static function generateSampleValue(FieldDefinitionInterface $field_definition) {
+  public static function generateSampleValue(FieldDefinitionInterface $field_definition): array {
     $values = parent::generateSampleValue($field_definition);
 
     $timeZoneList = timezone_identifiers_list();

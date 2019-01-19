@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur;
 
 /**
@@ -23,35 +25,35 @@ class DateRecurNonRecurringHelper implements DateRecurHelperInterface {
    *   The initial occurrence end date, or NULL to use start date.
    */
   public function __construct(\DateTimeInterface $dtStart, \DateTimeInterface $dtStartEnd = NULL) {
-    $dtStartEnd = isset($dtStartEnd) ? $dtStartEnd : clone $dtStart;
+    $dtStartEnd = $dtStartEnd ?? clone $dtStart;
     $this->occurrences = [new DateRange($dtStart, $dtStartEnd)];
   }
 
   /**
    * {@inheritdoc}
    */
-  public static function createInstance($string, \DateTimeInterface $dtStart, \DateTimeInterface $dtStartEnd = NULL) {
+  public static function createInstance(string $string, \DateTimeInterface $dtStart, ?\DateTimeInterface $dtStartEnd = NULL): DateRecurHelperInterface {
     return new static($dtStart, $dtStartEnd);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getRules() {
+  public function getRules(): array {
     return [];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function isInfinite() {
+  public function isInfinite(): bool {
     return FALSE;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function generateOccurrences(\DateTimeInterface $rangeStart = NULL, \DateTimeInterface $rangeEnd = NULL) {
+  public function generateOccurrences(?\DateTimeInterface $rangeStart = NULL, ?\DateTimeInterface $rangeEnd = NULL): \Generator {
     foreach ($this->occurrences as $occurrence) {
       $occurrenceStart = $occurrence->getStart();
       $occurrenceEnd = $occurrence->getEnd();
@@ -75,7 +77,7 @@ class DateRecurNonRecurringHelper implements DateRecurHelperInterface {
   /**
    * {@inheritdoc}
    */
-  public function getOccurrences(\DateTimeInterface $rangeStart = NULL, \DateTimeInterface $rangeEnd = NULL, $limit = NULL) {
+  public function getOccurrences(\DateTimeInterface $rangeStart = NULL, ?\DateTimeInterface $rangeEnd = NULL, ?int $limit = NULL): array {
     if (isset($limit) && (!is_int($limit) || $limit < 0)) {
       // Limit must be a number and more than one.
       throw new \InvalidArgumentException('Invalid count limit.');
@@ -93,35 +95,35 @@ class DateRecurNonRecurringHelper implements DateRecurHelperInterface {
   /**
    * {@inheritdoc}
    */
-  public function current() {
+  public function current(): DateRange {
     return current($this->occurrences);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function next() {
+  public function next(): void {
     next($this->occurrences);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function key() {
+  public function key(): ?int {
     return key($this->occurrences);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function valid() {
+  public function valid(): bool {
     return TRUE;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function rewind() {
+  public function rewind(): void {
     reset($this->occurrences);
   }
 

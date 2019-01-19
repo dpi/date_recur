@@ -5,6 +5,8 @@
  * Install, update and uninstall functions for date_recur module.
  */
 
+declare(strict_types = 1);
+
 use Drupal\Core\Datetime\Entity\DateFormat;
 use Drupal\Core\Entity\Entity\EntityFormDisplay;
 use Drupal\Core\Entity\Entity\EntityViewDisplay;
@@ -17,7 +19,7 @@ use Drupal\field\Entity\FieldStorageConfig;
 /**
  * Implements hook_requirements().
  */
-function date_recur_requirements($phase) {
+function date_recur_requirements($phase): array {
   $requirements = [];
 
   if (!class_exists('\RRule\RRule')) {
@@ -36,7 +38,7 @@ function date_recur_requirements($phase) {
 /**
  * Update date recur fields with new column schema for 'rrule' property.
  */
-function date_recur_update_8201(&$sandbox) {
+function date_recur_update_8201(&$sandbox): void {
   // The process is:
   // 1. Determine all entity types with date recur fields and load their
   //    definitions.
@@ -120,7 +122,7 @@ function date_recur_update_8201(&$sandbox) {
  *
  * Applies to attached fields only.
  */
-function date_recur_update_8202(&$sandbox) {
+function date_recur_update_8202(&$sandbox): void {
   $fieldType = 'date_recur';
   $entityTypeManager = \Drupal::entityTypeManager();
   $entityFieldManager = \Drupal::service('entity_field.manager');
@@ -154,7 +156,7 @@ function date_recur_update_8202(&$sandbox) {
 /**
  * Checks for invalid time zones in storage.
  */
-function date_recur_update_8203(&$sandbox) {
+function date_recur_update_8203(&$sandbox): void {
   $timeZoneList = timezone_identifiers_list();
   $database = \Drupal::database();
   $entityTypeManager = \Drupal::entityTypeManager();
@@ -205,14 +207,14 @@ function date_recur_update_8203(&$sandbox) {
 /**
  * Update view and form display configurations.
  */
-function date_recur_update_8204(&$sandbox) {
+function date_recur_update_8204(&$sandbox): void {
   /** @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface[] $displays */
   $displays = EntityFormDisplay::loadMultiple();
   foreach ($displays as $display) {
     $components = $display->getComponents();
     foreach ($components as $component => $options) {
       $updated = FALSE;
-      $type = isset($options['type']) ? $options['type'] : NULL;
+      $type = $options['type'] ?? NULL;
       if ($type === 'date_recur_default_widget') {
         // Change the ID.
         $options['type'] = 'date_recur_basic_widget';
@@ -234,7 +236,7 @@ function date_recur_update_8204(&$sandbox) {
     $components = $display->getComponents();
     foreach ($components as $component => $options) {
       $updated = FALSE;
-      $type = isset($options['type']) ? $options['type'] : NULL;
+      $type = $options['type'] ?? NULL;
       if ($type === 'date_recur_default_formatter') {
         // Option: show_next. Unchanged.
         // Option: count_per_item. Unchanged.
@@ -263,7 +265,7 @@ function date_recur_update_8204(&$sandbox) {
 /**
  * Add a default interpreter.
  */
-function date_recur_update_8205(&$sandbox) {
+function date_recur_update_8205(&$sandbox): void {
   if (DateFormat::load('long') && !DateRecurInterpreter::load('default_interpreter')) {
     $interpreter = DateRecurInterpreter::create([
       'id' => 'default_interpreter',
@@ -282,7 +284,7 @@ function date_recur_update_8205(&$sandbox) {
 /**
  * Removes default time zone setting from widgets extending basic widget.
  */
-function date_recur_update_8206(&$sandbox) {
+function date_recur_update_8206(&$sandbox): void {
   // Get widgets implementing the same class as basic widget.
   /** @var \Drupal\Core\Field\WidgetPluginManager $fieldWidgetPluginManager */
   $basicWidgetClass = DateRecurBasicWidget::class;
@@ -303,7 +305,7 @@ function date_recur_update_8206(&$sandbox) {
     $updated = 0;
     $components = $display->getComponents();
     foreach ($components as $component => $options) {
-      $widgetId = isset($options['type']) ? $options['type'] : NULL;
+      $widgetId = $options['type'] ?? NULL;
       if (in_array($widgetId, $basicWidgetDerivativeWidgetIds)) {
         // Unset the old setting.
         unset($options['settings']['timezone_override']);

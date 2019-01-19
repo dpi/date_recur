@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur\Plugin\Field\FieldWidget;
 
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Datetime\Element\Datetime;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\date_recur\DateRecurHelper;
-use Drupal\date_recur\DateRecurUtility;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItem;
 use Drupal\datetime_range\Plugin\Field\FieldWidget\DateRangeDefaultWidget;
@@ -30,7 +32,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
   /**
    * {@inheritdoc}
    */
-  public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
+  public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state): array {
     $element = parent::formElement($items, $delta, $element, $form, $form_state);
     $element['#theme'] = 'date_recur_basic_widget';
     $element['#element_validate'][] = [$this, 'validateRrule'];
@@ -66,7 +68,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
     $element['value']['#value_callback'] = $element['end_value']['#value_callback'] = [$this, 'dateValueCallback'];
 
     // Saved values (should) always have a time zone.
-    $timeZone = isset($items[$delta]->timezone) ? $items[$delta]->timezone : NULL;
+    $timeZone = $items[$delta]->timezone ?? NULL;
 
     $zones = $this->getTimeZoneOptions();
     $element['timezone'] = [
@@ -78,7 +80,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
 
     $element['rrule'] = [
       '#type' => 'textarea',
-      '#default_value' => isset($items[$delta]->rrule) ? $items[$delta]->rrule : NULL,
+      '#default_value' => $items[$delta]->rrule ?? NULL,
       '#title' => $this->t('Repeat rule'),
       '#description' => $this->t('Repeat rule in <a href=":link">iCalendar Recurrence Rule</a> (RRULE) format.', [
         ':link' => 'https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html',
@@ -104,7 +106,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    * @return mixed
    *   The value to assign to the element.
    */
-  public function dateValueCallback(array $element, $input, FormStateInterface $form_state) {
+  public function dateValueCallback(array $element, $input, FormStateInterface $form_state): array {
     if ($input !== FALSE) {
       $timeZonePath = array_slice($element['#parents'], 0, -1);
       $timeZonePath[] = 'timezone';
@@ -121,7 +123,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
         $timeZoneField = NestedArray::getValue($form_state->getCompleteForm(), $timeZoneFieldPath);
         $submittedTimeZone = isset($timeZoneField["#value"])
           ? $timeZoneField["#value"]
-          : (isset($timeZoneField["#default_value"]) ? $timeZoneField["#default_value"] : NULL);
+          : ($timeZoneField["#default_value"] ?? NULL);
       }
 
       $allTimeZones = \DateTimeZone::listIdentifiers();
@@ -157,7 +159,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    * @param array $complete_form
    *   The complete form structure.
    */
-  public function validateRrule(array &$element, FormStateInterface $form_state, array &$complete_form) {
+  public function validateRrule(array &$element, FormStateInterface $form_state, array &$complete_form): void {
     $input = NestedArray::getValue($form_state->getValues(), $element['#parents']);
     /** @var \Drupal\Core\Datetime\DrupalDateTime|array|null $startDate */
     $startDate = $input['value'];
@@ -205,7 +207,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    *   A list of time zones where keys are PHP time zone codes, and values are
    *   human readable and translatable labels.
    */
-  protected function getTimeZoneOptions() {
+  protected function getTimeZoneOptions(): array {
     return \system_time_zones(TRUE, TRUE);
   }
 
@@ -215,14 +217,16 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    * @return string
    *   A PHP time zone string.
    */
-  protected function getCurrentUserTimeZone() {
+  protected function getCurrentUserTimeZone(): string {
     return \drupal_get_user_timezone();
   }
 
   /**
    * {@inheritdoc}
    */
-  protected function createDefaultValue($date, $timezone) {
+  protected function createDefaultValue($date, $timezone): DrupalDateTime {
+    assert($date instanceof DrupalDateTime);
+    assert(is_string($timezone));
     // Cannot set time zone here as field item contains time zone.
     if ($this->getFieldSetting('datetime_type') == DateTimeItem::DATETIME_TYPE_DATE) {
       $date->setDefaultDateTime();
@@ -238,7 +242,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    * @param \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $item
    *   The date recur field item.
    */
-  protected function createDateRecurDefaultValue(array &$element, DateRecurItem $item) {
+  protected function createDateRecurDefaultValue(array &$element, DateRecurItem $item): void {
     $startDate = $item->start_date;
     $startDateEnd = $item->end_date;
     $timeZone = isset($item->timezone) ? new \DateTimeZone($item->timezone) : NULL;

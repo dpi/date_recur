@@ -119,7 +119,7 @@ class DateRecurRruleUnitTest extends UnitTestCase {
     foreach ($generator as $occurrence) {
       $this->assertTrue($occurrence instanceof DateRange);
 
-      list($assertStart, $assertEnd) = $assertOccurrences[$iterationCount];
+      [$assertStart, $assertEnd] = $assertOccurrences[$iterationCount];
       $this->assertTrue($assertStart == $occurrence->getStart());
       $this->assertTrue($assertEnd == $occurrence->getEnd());
 

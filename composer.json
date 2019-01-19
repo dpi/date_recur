@@ -11,7 +11,7 @@
     "source": "http://cgit.drupalcode.org/date_recur"
   },
   "require": {
-    "php": "^5.6|^7.1",
+    "php": "^7.1",
     "drupal/core": "^8.6",
     "rlanvin/php-rrule": "1.*"
   },

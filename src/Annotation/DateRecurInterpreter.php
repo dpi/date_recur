@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur\Annotation;
 
 use Drupal\Component\Annotation\Plugin;
@@ -7,7 +9,6 @@ use Drupal\Component\Annotation\Plugin;
 /**
  * Defines a Date recur occurrence handler item annotation object.
  *
- * @see \Drupal\date_recur\Plugin\DateRecurOccurrenceHandlerManager
  * @see plugin_api
  *
  * @Annotation

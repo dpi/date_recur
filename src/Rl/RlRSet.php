@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 // @codingStandardsIgnoreFile
 
 namespace Drupal\date_recur\Rl;

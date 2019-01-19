@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 // @codingStandardsIgnoreFile
 
 namespace Drupal\date_recur\Rl;
@@ -17,26 +19,6 @@ use RRule\RRuleInterface;
 class RlRRule extends RRule implements RRuleInterface {
 
   use StringTranslationTrait;
-
-  protected $timezoneOffset;
-
-  public function getStartDate() {
-    if (!empty($this->dtstart)) {
-      return $this->dtstart;
-    }
-    else {
-      return FALSE;
-    }
-  }
-
-  /**
-   * Set a timezone offset to add to all dates for display.
-   *
-   * @param int $offset Timezone offset in seconds.
-   */
-  public function setTimezoneOffset($offset) {
-    $this->timezoneOffset = $offset;
-  }
 
   /**
    * Return a human readable and translated representation of the repeat rule.

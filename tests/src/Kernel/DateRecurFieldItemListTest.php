@@ -18,7 +18,7 @@ use Drupal\KernelTests\KernelTestBase;
  *
  * @group date_recur
  * @coversDefaultClass \Drupal\date_recur\Plugin\Field\DateRecurOccurrencesComputed
- * @covers \Drupal\date_recur\Plugin\DateRecurOccurrenceHandler\DateRecurRlOccurrenceHandler::occurrencePropertyDefinition
+ * @covers \DateRecurRlOccurrenceHandler::occurrencePropertyDefinition
  */
 class DateRecurFieldItemListTest extends KernelTestBase {
 

@@ -96,22 +96,18 @@ class DateRecurNonRecurringHelperUnitTest extends UnitTestCase {
   /**
    * Creates a new helper.
    *
-   * Uses same arguments as
-   * \Drupal\date_recur\DateRecurHelperInterface::createInstance.
-   *
-   * @param \DateTimeInterface $dtStart
-   *   The initial occurrence start date.
-   * @param \DateTimeInterface|null $dtStartEnd
-   *   The initial occurrence end date, or NULL to use start date.
+   * @param \DateTimeInterface[]|null[] $args
+   *   Uses same arguments as
+   *   \Drupal\date_recur\DateRecurNonRecurringHelper::createInstance without
+   *   the RRULE arg.
    *
    * @return \Drupal\date_recur\DateRecurHelperInterface
    *   A new date recur helper instance.
    *
    * @see \Drupal\date_recur\DateRecurHelperInterface::createInstance
    */
-  protected function createHelper(\DateTimeInterface $dtStart, \DateTimeInterface $dtStartEnd = NULL) {
-    // @todo convert to splat for PHP5.6/7 version upgrade.
-    return DateRecurNonRecurringHelper::createInstance('', $dtStart, $dtStartEnd);
+  protected function createHelper(?\DateTimeInterface ...$args) {
+    return DateRecurNonRecurringHelper::createInstance('', ...$args);
   }
 
 }
