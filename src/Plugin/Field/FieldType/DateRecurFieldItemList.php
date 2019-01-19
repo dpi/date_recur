@@ -2,12 +2,15 @@
 
 namespace Drupal\date_recur\Plugin\Field\FieldType;
 
+use Drupal\Core\Datetime\DrupalDateTime;
+use Drupal\Core\Field\FieldItemList;
 use Drupal\date_recur\DateRecurPartGrid;
 use Drupal\date_recur\Event\DateRecurEvents;
 use Drupal\date_recur\Event\DateRecurValueEvent;
 use Drupal\Core\Entity\FieldableEntityInterface;
 use Drupal\Core\Field\FieldDefinitionInterface;
 use Drupal\Core\Form\FormStateInterface;
+use Drupal\datetime\Plugin\Field\FieldType\DateTimeItemInterface;
 use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeFieldItemList;
 
 /**
@@ -69,6 +72,33 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
     $element = parent::defaultValuesForm($form, $form_state);
 
     $defaultValue = $this->getFieldDefinition()->getDefaultValueLiteral();
+
+    $element['default_date_time_zone'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Start and end date time zone'),
+      '#description' => $this->t('Time zone is required if a default start date or end date is provided.'),
+      '#options' => $this->getTimeZoneOptions(),
+      '#default_value' => isset($defaultValue[0]['default_date_time_zone']) ? $defaultValue[0]['default_date_time_zone'] : '',
+      '#states' => [
+        // Show the field if either start or end is set.
+        'invisible' => [
+          [
+            ':input[name="default_value_input[default_date_type]"]' => ['value' => ''],
+            ':input[name="default_value_input[default_end_date_type]"]' => ['value' => ''],
+          ],
+        ],
+      ],
+    ];
+
+    $element['default_time_zone'] = [
+      '#type' => 'select',
+      '#title' => $this->t('Time zone'),
+      '#description' => $this->t('Default time zone.'),
+      '#options' => $this->getTimeZoneOptions(),
+      '#default_value' => isset($defaultValue[0]['default_time_zone']) ? $defaultValue[0]['default_time_zone'] : '',
+      '#empty_option' => $this->t('- Current user time zone -'),
+    ];
+
     $element['default_rrule'] = [
       '#type' => 'textarea',
       '#title' => $this->t('RRULE'),
@@ -76,6 +106,26 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
     ];
 
     return $element;
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function defaultValuesFormValidate(array $element, array &$form, FormStateInterface $form_state) {
+    $defaultDateTimeZone = $form_state->getValue(['default_value_input', 'default_date_time_zone']);
+    if (empty($defaultDateTimeZone)) {
+      $defaultStartType = $form_state->getValue(['default_value_input', 'default_date_type']);
+      if (!empty($defaultStartType)) {
+        $form_state->setErrorByName('default_value_input][default_date_time_zone', $this->t('Time zone must be provided if a default start date is provided.'));
+      }
+
+      $defaultEndType = $form_state->getValue(['default_value_input', 'default_end_date_type']);
+      if (!empty($defaultEndType)) {
+        $form_state->setErrorByName('default_value_input][default_date_time_zone', $this->t('Time zone must be provided if a default end date is provided.'));
+      }
+    }
+
+    parent::defaultValuesFormValidate($element, $form, $form_state);
   }
 
   /**
@@ -89,6 +139,16 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
       $values[0]['default_rrule'] = $rrule;
     }
 
+    $defaultDateTimeZone = $form_state->getValue(['default_value_input', 'default_date_time_zone']);
+    if ($defaultDateTimeZone) {
+      $values[0]['default_date_time_zone'] = $defaultDateTimeZone;
+    }
+
+    $defaultTimeZone = $form_state->getValue(['default_value_input', 'default_time_zone']);
+    if ($defaultTimeZone) {
+      $values[0]['default_time_zone'] = $defaultTimeZone;
+    }
+
     return $values;
   }
 
@@ -96,10 +156,72 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
    * {@inheritdoc}
    */
   public static function processDefaultValue($default_value, FieldableEntityInterface $entity, FieldDefinitionInterface $definition) {
+    $defaultDateTimeZone = isset($default_value[0]['default_date_time_zone']) ? $default_value[0]['default_date_time_zone'] : NULL;
+
+    $defaultValue = FieldItemList::processDefaultValue($default_value, $entity, $definition);
+
+    $defaultValues = [[]];
+
+    $hasDefaultStartDateType = !empty($defaultValue[0]['default_date_type']);
+    $hasDefaultEndDateType = !empty($defaultValue[0]['default_end_date_type']);
+    if ($hasDefaultStartDateType || $hasDefaultEndDateType) {
+      // A time zone must be set to continue with default start/end dates.
+      assert(!empty($defaultDateTimeZone));
+      $storageFormat = $definition->getSetting('datetime_type') == DateRecurItem::DATETIME_TYPE_DATE ? DateRecurItem::DATE_STORAGE_FORMAT : DateRecurItem::DATETIME_STORAGE_FORMAT;
+
+      // Instruct 'value' and 'end_value' to convert from the localised time
+      // zone to UTC.
+      $formatSettings = ['timezone' => DateTimeItemInterface::STORAGE_TIMEZONE];
+
+      if ($hasDefaultStartDateType) {
+        $start_date = new DrupalDateTime($defaultValue[0]['default_date'], $defaultDateTimeZone);
+        $start_value = $start_date->format($storageFormat, $formatSettings);
+        $defaultValues[0]['value'] = $start_value;
+        $defaultValues[0]['start_date'] = $start_date;
+      }
+
+      if ($hasDefaultEndDateType) {
+        $end_date = new DrupalDateTime($defaultValue[0]['default_end_date'], $defaultDateTimeZone);
+        $end_value = $end_date->format($storageFormat, $formatSettings);
+        $defaultValues[0]['end_value'] = $end_value;
+        $defaultValues[0]['end_date'] = $end_date;
+      }
+
+      $defaultValue = $defaultValues;
+    }
+
     $rrule = isset($default_value[0]['default_rrule']) ? $default_value[0]['default_rrule'] : NULL;
-    $defaultValue = parent::processDefaultValue($default_value, $entity, $definition);
-    $defaultValue[0]['rrule'] = $rrule;
+    if (!empty($rrule)) {
+      $defaultValue[0]['rrule'] = $rrule;
+    }
+
+    $defaultTimeZone = isset($default_value[0]['default_time_zone']) ? $default_value[0]['default_time_zone'] : NULL;
+    if (!empty($defaultTimeZone)) {
+      $defaultValue[0]['timezone'] = $defaultTimeZone;
+    }
+    else {
+      // @todo replace with https://www.drupal.org/project/drupal/issues/3009377.
+      $timeZone = \drupal_get_user_timezone();
+      if (empty($timeZone)) {
+        throw new \Exception('Something went wrong. User has no time zone.');
+      }
+      $defaultValue[0]['timezone'] = $timeZone;
+    }
+
+    unset($defaultValue[0]["default_time_zone"]);
+    unset($defaultValue[0]["default_rrule"]);
     return $defaultValue;
+  }
+
+  /**
+   * Get a list of time zones suitable for a select field.
+   *
+   * @return array
+   *   A list of time zones where keys are PHP time zone codes, and values are
+   *   human readable and translatable labels.
+   */
+  protected function getTimeZoneOptions() {
+    return \system_time_zones(TRUE, TRUE);
   }
 
   /**

@@ -261,4 +261,118 @@ class DateRecurFieldItemTest extends KernelTestBase {
     $this->assertEquals(0, $violations->count());
   }
 
+  /**
+   * Tests value is emptied if time zone is empty.
+   */
+  public function testNoTimeZone() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      [
+        'value' => '2008-06-16T00:00:00',
+        'end_value' => '2008-06-16T06:00:00',
+        'rrule' => 'FREQ=DAILY;COUNT=100',
+      ],
+    ];
+
+    // After saving, empty/invalid values are emptied.
+    $entity->save();
+    $this->assertEquals(0, $entity->dr->count());
+  }
+
+  /**
+   * Tests value is emptied if start is empty.
+   */
+  public function testMissingStart() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      [
+        'end_value' => '2008-06-16T06:00:00',
+        'timezone' => 'Pacific/Chuuk',
+      ],
+    ];
+
+    // After saving, empty/invalid values are emptied.
+    $entity->save();
+    $this->assertEquals(0, $entity->dr->count());
+  }
+
+  /**
+   * Tests value is emptied if end is empty.
+   */
+  public function testMissingEnd() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      [
+        'value' => '2008-06-16T00:00:00',
+        'timezone' => 'Pacific/Chuuk',
+      ],
+    ];
+
+    // After saving, empty/invalid values are emptied.
+    $entity->save();
+    $this->assertEquals(0, $entity->dr->count());
+  }
+
+  /**
+   * Tests cached helper instance is reset if its dependant values are modified.
+   *
+   * @covers ::onChange
+   */
+  public function testHelperResetAfterValueChange() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      [
+        'value' => '2014-06-15T23:00:01',
+        'end_value' => '2014-06-16T07:00:02',
+        'timezone' => 'Indian/Christmas',
+        'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=5',
+      ],
+    ];
+
+    /** @var \Drupal\date_recur\DateRecurHelperInterface $helper1 */
+    $helper1 = $entity->dr[0]->getHelper();
+    $firstOccurrence = $helper1->getOccurrences(NULL, NULL, 1)[0];
+    $this->assertEquals('Mon, 16 Jun 2014 06:00:01 +0700', $firstOccurrence->getStart()->format('r'));
+    $this->assertEquals('Mon, 16 Jun 2014 14:00:02 +0700', $firstOccurrence->getEnd()->format('r'));
+    $this->assertEquals('WEEKLY', $helper1->getRules()[0]->getFrequency());
+
+    // Change some values.
+    $entity->dr[0]->value = '2015-07-15T23:00:03';
+    $entity->dr[0]->end_value = '2015-07-16T07:00:04';
+    $entity->dr[0]->rrule = 'FREQ=DAILY;COUNT=3';
+
+    /** @var \Drupal\date_recur\DateRecurHelperInterface $helper2 */
+    $helper2 = $entity->dr[0]->getHelper();
+    $firstOccurrence = $helper2->getOccurrences(NULL, NULL, 1)[0];
+    $this->assertEquals('Thu, 16 Jul 2015 06:00:03 +0700', $firstOccurrence->getStart()->format('r'));
+    $this->assertEquals('Thu, 16 Jul 2015 14:00:04 +0700', $firstOccurrence->getEnd()->format('r'));
+    $this->assertEquals('DAILY', $helper2->getRules()[0]->getFrequency());
+  }
+
+  /**
+   * Tests magic properties have the correct time zone.
+   */
+  public function testStartEndDateTimeZone() {
+    $entity = DrEntityTest::create();
+    $entity->dr = [
+      [
+        'value' => '2014-06-15T23:00:01',
+        'end_value' => '2014-06-16T07:00:02',
+        'timezone' => 'Indian/Christmas',
+        'rrule' => 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;COUNT=5',
+      ],
+    ];
+
+    /** @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $item */
+    $item = $entity->dr[0];
+    /** @var \Drupal\Core\Datetime\DrupalDateTime $startDate */
+    $startDate = $item->start_date;
+    $this->assertEquals('Mon, 16 Jun 2014 06:00:01 +0700', $startDate->format('r'));
+    $this->assertEquals('Indian/Christmas', $startDate->getTimezone()->getName());
+    /** @var \Drupal\Core\Datetime\DrupalDateTime $endDate */
+    $endDate = $item->end_date;
+    $this->assertEquals('Mon, 16 Jun 2014 14:00:02 +0700', $endDate->format('r'));
+    $this->assertEquals('Indian/Christmas', $endDate->getTimezone()->getName());
+  }
+
 }

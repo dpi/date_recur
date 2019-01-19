@@ -57,34 +57,6 @@ class DateRecurBasicWidgetTest extends BrowserTestBase {
   }
 
   /**
-   * Test when default time zone is current users time zone.
-   */
-  public function testNewEntityDefaultTimeZoneCurrent() {
-    $display = entity_get_form_display('dr_entity_test', 'dr_entity_test', 'default');
-    $component = $display->getComponent('dr');
-    $component['settings']['timezone_override'] = NULL;
-    $display->setComponent('dr', $component);
-    $display->save();
-
-    $this->drupalGet(Url::fromRoute('entity.dr_entity_test.add_form'));
-    $this->assertSession()->fieldValueEquals('dr[0][timezone]', 'Asia/Singapore');
-  }
-
-  /**
-   * Test when default time zone value is overridden.
-   */
-  public function testNewEntityDefaultTimeZoneOverride() {
-    $display = entity_get_form_display('dr_entity_test', 'dr_entity_test', 'default');
-    $component = $display->getComponent('dr');
-    $component['settings']['timezone_override'] = 'Antarctica/Troll';
-    $display->setComponent('dr', $component);
-    $display->save();
-
-    $this->drupalGet(Url::fromRoute('entity.dr_entity_test.add_form'));
-    $this->assertSession()->fieldValueEquals('dr[0][timezone]', 'Antarctica/Troll');
-  }
-
-  /**
    * Test value from DB displays correctly.
    */
   public function testEditForm() {
@@ -213,18 +185,34 @@ class DateRecurBasicWidgetTest extends BrowserTestBase {
    * Tests default values appear in widget.
    */
   public function testDefaultValues() {
-    $defaultRrule = 'FREQ=WEEKLY;COUNT=995';
-
     /** @var \Drupal\Core\Entity\EntityFieldManagerInterface $entityFieldManager */
     $entityFieldManager = \Drupal::service('entity_field.manager');
     $baseFields = $entityFieldManager->getBaseFieldDefinitions('dr_entity_test');
     $baseFieldOverride = BaseFieldOverride::createFromBaseFieldDefinition($baseFields['dr'], 'dr_entity_test');
-    $baseFieldOverride->setDefaultValue([['default_rrule' => $defaultRrule]]);
+    // Default values need to evaluate FALSE per DateRecurItem::isEmpty
+    // otherwise the values will be cleared out before display.
+    $baseFieldOverride->setDefaultValue([
+      [
+        'default_date_type' => 'relative',
+        'default_date' => '12th April 2013 3pm',
+        'default_end_date_type' => 'relative',
+        'default_end_date' => '12th April 2013 4pm',
+        'default_date_time_zone' => 'Europe/Oslo',
+        'default_time_zone' => 'Indian/Christmas',
+        'default_rrule' => 'FREQ=WEEKLY;COUNT=995',
+      ],
+    ]);
     $baseFieldOverride->save();
 
     $url = Url::fromRoute('entity.dr_entity_test.add_form');
     $this->drupalGet($url);
-    $this->assertSession()->fieldValueEquals('dr[0][rrule]', $defaultRrule);
+    // 3pm/4pm Oslo (UTC+2) -> 8pm/9pm Christmas (UTC+7).
+    $this->assertSession()->fieldValueEquals('dr[0][value][date]', '2013-04-12');
+    $this->assertSession()->fieldValueEquals('dr[0][value][time]', '20:00:00');
+    $this->assertSession()->fieldValueEquals('dr[0][end_value][date]', '2013-04-12');
+    $this->assertSession()->fieldValueEquals('dr[0][end_value][time]', '21:00:00');
+    $this->assertSession()->fieldValueEquals('dr[0][timezone]', 'Indian/Christmas');
+    $this->assertSession()->fieldValueEquals('dr[0][rrule]', 'FREQ=WEEKLY;COUNT=995');
   }
 
   /**

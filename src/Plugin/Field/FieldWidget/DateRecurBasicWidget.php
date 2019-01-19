@@ -31,7 +31,6 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    */
   public static function defaultSettings() {
     return [
-      'timezone_override' => '',
       'allow_all_day' => FALSE,
     ] + parent::defaultSettings();
   }
@@ -41,16 +40,6 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    */
   public function settingsForm(array $form, FormStateInterface $form_state) {
     $elements = parent::settingsForm($form, $form_state);
-
-    // Aka default time zone.
-    $elements['timezone_override'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Default time zone'),
-      '#description' => $this->t('Dates will repeat differently depending on time zone. For example: if you want a rule to repeat every Wednesday, the Wednesday will start and end at different times depending on the time zone. Recommended value: use current user time zone.'),
-      '#options' => $this->getTimeZoneOptions(),
-      '#default_value' => $this->getSetting('timezone_override'),
-      '#empty_option' => $this->t('- Use current user time zone -'),
-    ];
 
     $elements['allow_all_day'] = [
       '#type' => 'checkbox',
@@ -67,8 +56,6 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    */
   public function settingsSummary() {
     $summary = parent::settingsSummary();
-    $timeZone = $this->getSetting('timezone_override') ?: $this->t('User time zone');
-    $summary[] = $this->t('Default time zone: @time_zone', ['@time_zone' => $timeZone]);
 
     if ($this->getSetting('allow_all_day')) {
       $summary[] = $this->t('"All day" allowed');
@@ -141,9 +128,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
     $element['value']['#value_callback'] = $element['end_value']['#value_callback'] = [$this, 'dateValueCallback'];
 
     // Saved values (should) always have a time zone.
-    $timeZone = isset($items[$delta]->timezone)
-      ? $items[$delta]->timezone
-      : $this->getSetting('timezone_override') ?: $this->getCurrentUserTimeZone();
+    $timeZone = isset($items[$delta]->timezone) ? $items[$delta]->timezone : NULL;
 
     $zones = $this->getTimeZoneOptions();
     $element['timezone'] = [

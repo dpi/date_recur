@@ -14,6 +14,7 @@ use Drupal\date_recur\DateRecurHelper;
 use Drupal\date_recur\DateRecurNonRecurringHelper;
 use Drupal\date_recur\DateRecurRruleMap;
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
+use Drupal\date_recur\Plugin\Field\DateRecurDateTimeComputed;
 use Drupal\date_recur\Plugin\Field\DateRecurOccurrencesComputed;
 use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeItem;
 
@@ -88,6 +89,9 @@ class DateRecurItem extends DateRangeItem {
    */
   public static function propertyDefinitions(FieldStorageDefinitionInterface $field_definition) {
     $properties = parent::propertyDefinitions($field_definition);
+
+    $properties['start_date']->setClass(DateRecurDateTimeComputed::class);
+    $properties['end_date']->setClass(DateRecurDateTimeComputed::class);
 
     $properties['rrule'] = DataDefinition::create('string')
       ->setLabel(new TranslatableMarkup('RRule'))
@@ -359,7 +363,12 @@ class DateRecurItem extends DateRangeItem {
    */
   public function preSave() {
     parent::preSave();
-    $isInfinite = $this->getHelper()->isInfinite();
+    try {
+      $isInfinite = $this->getHelper()->isInfinite();
+    }
+    catch (DateRecurHelperArgumentException $e) {
+      $isInfinite = FALSE;
+    }
     $this->get('infinite')->setValue($isInfinite);
   }
 
@@ -370,6 +379,17 @@ class DateRecurItem extends DateRangeItem {
     // Cast infinite to boolean on load.
     $values['infinite'] = !empty($values['infinite']);
     parent::setValue($values, $notify);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function onChange($property_name, $notify = TRUE) {
+    if (in_array($property_name, ['value', 'end_value', 'rrule', 'timezone'])) {
+      // Reset cached helper instance if values changed.
+      $this->helper = NULL;
+    }
+    parent::onChange($property_name, $notify);
   }
 
   /**
@@ -431,8 +451,14 @@ class DateRecurItem extends DateRangeItem {
    * {@inheritdoc}
    */
   public function isEmpty() {
-    $rrule = $this->get('rrule')->getValue();
-    return parent::isEmpty() && ($rrule === NULL || $rrule === '');
+    $start_value = $this->get('value')->getValue();
+    $end_value = $this->get('end_value')->getValue();
+    return
+      // Use OR operator instead of AND from parent. See
+      // https://www.drupal.org/project/drupal/issues/3025812
+      ($start_value === NULL || $start_value === '') ||
+      ($end_value === NULL || $end_value === '') ||
+      empty($this->get('timezone')->getValue());
   }
 
   /**

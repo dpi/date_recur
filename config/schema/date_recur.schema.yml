@@ -2,6 +2,12 @@ field.value.date_recur:
   type: field.value.daterange
   label: 'Default value'
   mapping:
+    default_date_time_zone:
+      type: string
+      label: 'A time zone identifier used for default start and/or end dates.'
+    default_time_zone:
+      type: string
+      label: 'A time zone identifier used as default value for time zone. If empty, current user time zone should be used.'
     default_rrule:
       type: string
       label: 'Default RRULE'
@@ -58,9 +64,6 @@ field.widget.settings.date_recur_basic_widget:
   type: field.widget.settings.daterange_default
   label: 'Settings for Simple Recurring Date Widget'
   mapping:
-    timezone_override:
-      label: 'The time zone (in PHP time format) to set new values, or empty to use the current users time zone at time of first save.'
-      type: string
     allow_all_day:
       label: 'Allow "all day" option to be selected'
       type: boolean

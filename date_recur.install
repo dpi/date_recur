@@ -11,6 +11,7 @@ use Drupal\Core\Entity\Entity\EntityViewDisplay;
 use Drupal\Core\Entity\Sql\SqlEntityStorageInterface;
 use Drupal\Core\Utility\UpdateException;
 use Drupal\date_recur\Entity\DateRecurInterpreter;
+use Drupal\date_recur\Plugin\Field\FieldWidget\DateRecurBasicWidget;
 use Drupal\field\Entity\FieldStorageConfig;
 
 /**
@@ -275,5 +276,44 @@ function date_recur_update_8205(&$sandbox) {
       ],
     ]);
     $interpreter->save();
+  }
+}
+
+/**
+ * Removes default time zone setting from widgets extending basic widget.
+ */
+function date_recur_update_8206(&$sandbox) {
+  // Get widgets implementing the same class as basic widget.
+  /** @var \Drupal\Core\Field\WidgetPluginManager $fieldWidgetPluginManager */
+  $basicWidgetClass = DateRecurBasicWidget::class;
+  $basicWidgetDerivativeWidgetIds = [];
+  $basicWidgetDerivativeWidgetIds[] = 'date_recur_basic_widget';
+  $fieldWidgetPluginManager = \Drupal::service('plugin.manager.field.widget');
+  foreach ($fieldWidgetPluginManager->getDefinitions() as $widgetId => $definition) {
+    $class = $definition['class'];
+    if (class_exists($class) && (new \ReflectionClass($class))->isSubclassOf($basicWidgetClass)) {
+      $basicWidgetDerivativeWidgetIds[] = $widgetId;
+    }
+  }
+
+  // Find form displays using any of the widgets extending basic widget.
+  /** @var \Drupal\Core\Entity\Display\EntityFormDisplayInterface[] $displays */
+  $displays = EntityFormDisplay::loadMultiple();
+  foreach ($displays as $display) {
+    $updated = 0;
+    $components = $display->getComponents();
+    foreach ($components as $component => $options) {
+      $widgetId = isset($options['type']) ? $options['type'] : NULL;
+      if (in_array($widgetId, $basicWidgetDerivativeWidgetIds)) {
+        // Unset the old setting.
+        unset($options['settings']['timezone_override']);
+        $updated++;
+        $display->setComponent($component, $options);
+      }
+    }
+
+    if ($updated > 0) {
+      $display->save();
+    }
   }
 }
