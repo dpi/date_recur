@@ -49,6 +49,8 @@ field.formatter.settings.date_recur_basic_formatter:
       type: string
     same_end_date_format_type:
       type: string
+    all_day_format_type:
+      type: string
     interpreter:
       type: string
 
@@ -59,6 +61,9 @@ field.widget.settings.date_recur_basic_widget:
     timezone_override:
       label: 'The time zone (in PHP time format) to set new values, or empty to use the current users time zone at time of first save.'
       type: string
+    allow_all_day:
+      label: 'Allow "all day" option to be selected'
+      type: boolean
 
 date_recur.interpreter.*:
   type: config_entity

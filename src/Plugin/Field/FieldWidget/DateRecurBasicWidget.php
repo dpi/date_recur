@@ -7,7 +7,6 @@ use Drupal\Core\Datetime\Element\Datetime;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\date_recur\DateRecurHelper;
-use Drupal\date_recur\DateRecurUtility;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItem;
 use Drupal\datetime_range\Plugin\Field\FieldWidget\DateRangeDefaultWidget;
@@ -33,6 +32,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
   public static function defaultSettings() {
     return [
       'timezone_override' => '',
+      'allow_all_day' => FALSE,
     ] + parent::defaultSettings();
   }
 
@@ -52,6 +52,13 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
       '#empty_option' => $this->t('- Use current user time zone -'),
     ];
 
+    $elements['allow_all_day'] = [
+      '#type' => 'checkbox',
+      '#title' => $this->t('Allow all day'),
+      '#description' => $this->t('Allow the user to flag the provided datetime as "all day".'),
+      '#default_value' => $this->getSetting('allow_all_day'),
+    ];
+
     return $elements;
   }
 
@@ -62,6 +69,11 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
     $summary = parent::settingsSummary();
     $timeZone = $this->getSetting('timezone_override') ?: $this->t('User time zone');
     $summary[] = $this->t('Default time zone: @time_zone', ['@time_zone' => $timeZone]);
+
+    if ($this->getSetting('allow_all_day')) {
+      $summary[] = $this->t('"All day" allowed');
+    }
+
     return $summary;
   }
 
@@ -99,6 +111,31 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
     // empty.
     $element['end_value']['#required'] = FALSE;
     $element['value']['#group'] = $element['end_value']['#group'] = implode('][', $firstOccurrenceParents);
+
+    // Add "all day" checkboxes if that option is allowed.
+    if ($this->getSetting('allow_all_day')) {
+      $element['value']['value_all_day'] = [
+        '#type' => 'checkbox',
+        '#title' => $this->t('All day'),
+        '#weight' => 2,
+        '#default_value' => $items->get($delta)->isStartAllDay(),
+        '#parents' => [$items->getName(), $delta, 'value_all_day'],
+      ];
+
+      $element['end_value']['end_value_all_day'] = [
+        '#type' => 'checkbox',
+        '#title' => $this->t('All day'),
+        '#weight' => 2,
+        '#default_value' => $items->get($delta)->isEndAllDay(),
+        '#parents' => [$items->getName(), $delta, 'end_value_all_day'],
+      ];
+
+      $element['#attached'] = [
+        'library' => [
+          'date_recur/date_recur_all_day',
+        ],
+      ];
+    }
 
     // Add custom value callbacks to correctly form a date from time zone field.
     $element['value']['#value_callback'] = $element['end_value']['#value_callback'] = [$this, 'dateValueCallback'];
@@ -288,7 +325,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
         $startDate->setTimezone($timeZone);
         $element['value']['#default_value'] = $this->createDefaultValue($startDate, $timeZone->getName());
       }
-      if ($startDateEnd) {
+      if ($startDateEnd && $startDate != $startDateEnd) {
         $startDateEnd->setTimezone($timeZone);
         $element['end_value']['#default_value'] = $this->createDefaultValue($startDateEnd, $timeZone->getName());
       }

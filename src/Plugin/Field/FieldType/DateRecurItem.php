@@ -13,7 +13,6 @@ use Drupal\Core\TypedData\ListDataDefinition;
 use Drupal\date_recur\DateRecurHelper;
 use Drupal\date_recur\DateRecurNonRecurringHelper;
 use Drupal\date_recur\DateRecurRruleMap;
-use Drupal\date_recur\DateRecurUtility;
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
 use Drupal\date_recur\Plugin\Field\DateRecurOccurrencesComputed;
 use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeItem;
@@ -61,6 +60,21 @@ class DateRecurItem extends DateRangeItem {
    * @internal will be made protected.
    */
   const FREQUENCY_SETTINGS_PARTS_PARTIAL = 'some-parts';
+
+  /**
+   * Value for the time that indicates an all-day start.
+   */
+  const ALL_DAY_START_TIME = '00:00:00';
+
+  /**
+   * Value for the time that indicates an all-day end.
+   */
+  const ALL_DAY_END_TIME = '23:59:59';
+
+  /**
+   * Format for all_day indicator values.
+   */
+  const ALL_DAY_FORMAT = 'H:i:s';
 
   /**
    * The date recur helper.
@@ -433,6 +447,47 @@ class DateRecurItem extends DateRangeItem {
     $values['infinite'] = FALSE;
 
     return $values;
+  }
+
+  /**
+   * Determine whether the date value represents "all day".
+   *
+   * @return bool
+   *   Whether the field value is recurring.
+   */
+  public function isStartAllDay() {
+    $value = $this->getValue();
+
+    if (!empty($value)) {
+      $date = DrupalDateTime::createFromFormat(self::DATETIME_STORAGE_FORMAT, $value['value'], self::STORAGE_TIMEZONE);
+      if ($value['timezone']) {
+        $date->setTimezone(new \DateTimeZone($value['timezone']));
+      }
+      if (self::ALL_DAY_START_TIME == $date->getPhpDateTime()->format(self::ALL_DAY_FORMAT)) {
+        return TRUE;
+      }
+    }
+    return FALSE;
+  }
+
+  /**
+   * Determine whether the end_date value represents "all day".
+   *
+   * @return bool
+   *   Whether the field value is recurring.
+   */
+  public function isEndAllDay() {
+    $value = $this->getValue();
+    if (!empty($value)) {
+      $date = DrupalDateTime::createFromFormat(self::DATETIME_STORAGE_FORMAT, $value['end_value'], self::STORAGE_TIMEZONE);
+      if ($value['timezone']) {
+        $date->setTimezone(new \DateTimeZone($value['timezone']));
+      }
+      if (self::ALL_DAY_END_TIME == $date->getPhpDateTime()->format(self::ALL_DAY_FORMAT)) {
+        return TRUE;
+      }
+    }
+    return FALSE;
   }
 
 }
