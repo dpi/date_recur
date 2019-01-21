@@ -6,6 +6,7 @@ use Drupal\Core\Datetime\Entity\DateFormat;
 use Drupal\date_recur\Entity\DateRecurInterpreter;
 use Drupal\date_recur_entity_test\Entity\DrEntityTest;
 use Drupal\KernelTests\KernelTestBase;
+use Drupal\user\Entity\User;
 
 /**
  * Tests date recur formatter.
@@ -414,8 +415,18 @@ class DateRecurBasicFormatterTest extends KernelTestBase {
 
   /**
    * Tests formatter output for same start/end date.
+   *
+   * It doesnt matter which time zone the data is in, we only check same date
+   * for the current logged in user.
    */
   public function testFormatterSameDay() {
+    $user = User::create([
+      'uid' => 2,
+      // UTC+10.
+      'timezone' => 'Pacific/Port_Moresby',
+    ]);
+    $this->container->get('current_user')->setAccount($user);
+
     $dateFormatSameDate = DateFormat::create(['id' => $this->randomMachineName(), 'pattern' => '\s\a\m\e \d\a\t\e']);
     $dateFormatSameDate->save();
     $settings = [
@@ -426,11 +437,13 @@ class DateRecurBasicFormatterTest extends KernelTestBase {
     ];
     $entity = DrEntityTest::create();
     $entity->dr = [
-      'value' => '2014-06-15T00:00:00',
-      'end_value' => '2014-06-15T23:59:59',
+      // 10pm-9:59:59pm HK time.
+      'value' => '2014-06-14T14:00:00',
+      'end_value' => '2014-06-15T13:59:59',
       'rrule' => '',
       'infinite' => '0',
-      'timezone' => 'Australia/Sydney',
+      // HK is UTC+8.
+      'timezone' => 'Asia/Hong_Kong',
     ];
     $this->renderFormatterSettings($entity, $settings);
 
@@ -438,7 +451,7 @@ class DateRecurBasicFormatterTest extends KernelTestBase {
     $this->assertCount(2, $dates);
 
     // First time is start date.
-    $this->assertEquals('Sun, 15 Jun 2014 10:00:00 +1000', (string) $dates[0]);
+    $this->assertEquals('Sun, 15 Jun 2014 00:00:00 +1000', (string) $dates[0]);
 
     // Second time is end date.
     $this->assertEquals('same date', (string) $dates[1]);

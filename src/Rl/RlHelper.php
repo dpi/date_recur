@@ -7,6 +7,8 @@ namespace Drupal\date_recur\Rl;
 use Drupal\date_recur\DateRange;
 use Drupal\date_recur\DateRecurHelperInterface;
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
+use RRule\RRule;
+use RRule\RSet;
 
 /**
  * Helper for recurring rules implemented with rlanvin/rrule.
@@ -18,7 +20,7 @@ class RlHelper implements DateRecurHelperInterface {
   /**
    * The RRULE set.
    *
-   * @var \Drupal\date_recur\Rl\RlRSet
+   * @var \RRule\RSet
    */
   protected $set;
 
@@ -76,13 +78,13 @@ class RlHelper implements DateRecurHelperInterface {
       throw new DateRecurHelperArgumentException(sprintf('One RRULE must be provided. %d provided.', $count));
     }
 
-    $this->set = new RlRSet();
+    $this->set = new RSet();
 
     foreach ($parts as $type => $values) {
       foreach ($values as $value) {
         switch ($type) {
           case 'RRULE':
-            $this->set->addRRule(new RlRRule($value, $dtStart));
+            $this->set->addRRule(new RRule($value, $dtStart));
             break;
 
           case 'RDATE':
@@ -112,7 +114,7 @@ class RlHelper implements DateRecurHelperInterface {
    */
   public function getRules(): array {
     return array_map(
-      function (RlRRule $rule): RlDateRecurRule {
+      function (RRule $rule): RlDateRecurRule {
         // RL returns all parts, even if no values originally provided. Filter
         // out the useless parts.
         $parts = array_filter($rule->getRule());

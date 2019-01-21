@@ -17,6 +17,7 @@ use Drupal\date_recur\DateRecurHelperInterface;
 use Drupal\date_recur\DateRecurNonRecurringHelper;
 use Drupal\date_recur\DateRecurRruleMap;
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
+use Drupal\date_recur\Plugin\Field\DateRecurDateTimeComputed;
 use Drupal\date_recur\Plugin\Field\DateRecurOccurrencesComputed;
 use Drupal\datetime_range\Plugin\Field\FieldType\DateRangeItem;
 
@@ -79,6 +80,9 @@ class DateRecurItem extends DateRangeItem {
    */
   public static function propertyDefinitions(FieldStorageDefinitionInterface $field_definition): array {
     $properties = parent::propertyDefinitions($field_definition);
+
+    $properties['start_date']->setClass(DateRecurDateTimeComputed::class);
+    $properties['end_date']->setClass(DateRecurDateTimeComputed::class);
 
     $properties['rrule'] = DataDefinition::create('string')
       ->setLabel(new TranslatableMarkup('RRule'))
@@ -367,6 +371,17 @@ class DateRecurItem extends DateRangeItem {
     // Cast infinite to boolean on load.
     $values['infinite'] = !empty($values['infinite']);
     parent::setValue($values, $notify);
+  }
+
+  /**
+   * {@inheritdoc}
+   */
+  public function onChange($property_name, $notify = TRUE) {
+    if (in_array($property_name, ['value', 'end_value', 'rrule', 'timezone'])) {
+      // Reset cached helper instance if values changed.
+      $this->helper = NULL;
+    }
+    parent::onChange($property_name, $notify);
   }
 
   /**
