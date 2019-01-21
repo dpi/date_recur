@@ -21,7 +21,7 @@ class DateRecurOccurrencesComputed extends ItemList {
   /**
    * {@inheritdoc}
    *
-   * @return \Generator
+   * @yield \Generator
    *   An occurrence generator.
    */
   public function getValue($langcode = NULL): \Generator {
