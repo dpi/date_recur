@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\Tests\date_recur\Unit;
 
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
