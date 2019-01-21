@@ -1,10 +1,14 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur\Rl;
 
 use Drupal\date_recur\DateRange;
 use Drupal\date_recur\DateRecurHelperInterface;
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
+use RRule\RRule;
+use RRule\RSet;
 
 /**
  * Helper for recurring rules implemented with rlanvin/rrule.
@@ -16,7 +20,7 @@ class RlHelper implements DateRecurHelperInterface {
   /**
    * The RRULE set.
    *
-   * @var \Drupal\date_recur\Rl\RlRSet
+   * @var \RRule\RSet
    */
   protected $set;
 
@@ -39,8 +43,8 @@ class RlHelper implements DateRecurHelperInterface {
    * @param \DateTimeInterface|null $dtStartEnd
    *   The initial occurrence end date, or NULL to use start date.
    */
-  public function __construct($string, \DateTimeInterface $dtStart, \DateTimeInterface $dtStartEnd = NULL) {
-    $dtStartEnd = isset($dtStartEnd) ? $dtStartEnd : clone $dtStart;
+  public function __construct(string $string, \DateTimeInterface $dtStart, ?\DateTimeInterface $dtStartEnd = NULL) {
+    $dtStartEnd = $dtStartEnd ?? clone $dtStart;
     $this->recurDiff = $dtStart->diff($dtStartEnd);
 
     // Ensure the string is prefixed with RRULE if not multiline.
@@ -63,7 +67,7 @@ class RlHelper implements DateRecurHelperInterface {
         throw new DateRecurHelperArgumentException(sprintf('Multiline RRULE must be prefixed with either: RRULE, EXDATE, EXRULE, or RDATE. Missing for line %s', $n + 1));
       }
 
-      list($part, $partValue) = explode(':', $line, 2);
+      [$part, $partValue] = explode(':', $line, 2);
       if (!isset($parts[$part])) {
         throw new DateRecurHelperArgumentException("Unsupported line: " . $part);
       }
@@ -74,13 +78,13 @@ class RlHelper implements DateRecurHelperInterface {
       throw new DateRecurHelperArgumentException(sprintf('One RRULE must be provided. %d provided.', $count));
     }
 
-    $this->set = new RlRSet();
+    $this->set = new RSet();
 
     foreach ($parts as $type => $values) {
       foreach ($values as $value) {
         switch ($type) {
           case 'RRULE':
-            $this->set->addRRule(new RlRRule($value, $dtStart));
+            $this->set->addRRule(new RRule($value, $dtStart));
             break;
 
           case 'RDATE':
@@ -101,16 +105,16 @@ class RlHelper implements DateRecurHelperInterface {
   /**
    * {@inheritdoc}
    */
-  public static function createInstance($string, \DateTimeInterface $dtStart, \DateTimeInterface $dtStartEnd = NULL) {
+  public static function createInstance(string $string, \DateTimeInterface $dtStart, ?\DateTimeInterface $dtStartEnd = NULL): DateRecurHelperInterface {
     return new static($string, $dtStart, $dtStartEnd);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getRules() {
+  public function getRules(): array {
     return array_map(
-      function (RlRRule $rule) {
+      function (RRule $rule): RlDateRecurRule {
         // RL returns all parts, even if no values originally provided. Filter
         // out the useless parts.
         $parts = array_filter($rule->getRule());
@@ -123,14 +127,14 @@ class RlHelper implements DateRecurHelperInterface {
   /**
    * {@inheritdoc}
    */
-  public function isInfinite() {
+  public function isInfinite(): bool {
     return $this->set->isInfinite();
   }
 
   /**
    * {@inheritdoc}
    */
-  public function generateOccurrences(\DateTimeInterface $rangeStart = NULL, \DateTimeInterface $rangeEnd = NULL) {
+  public function generateOccurrences(?\DateTimeInterface $rangeStart = NULL, ?\DateTimeInterface $rangeEnd = NULL): \Generator {
     foreach ($this->set as $occurrenceStart) {
       /** @var \DateTime $occurrence */
       $occurrenceEnd = clone $occurrenceStart;
@@ -155,7 +159,7 @@ class RlHelper implements DateRecurHelperInterface {
   /**
    * {@inheritdoc}
    */
-  public function getOccurrences(\DateTimeInterface $rangeStart = NULL, \DateTimeInterface $rangeEnd = NULL, $limit = NULL) {
+  public function getOccurrences(\DateTimeInterface $rangeStart = NULL, ?\DateTimeInterface $rangeEnd = NULL, ?int $limit = NULL): array {
     if ($this->isInfinite() && !isset($rangeEnd) && !isset($limit)) {
       throw new \InvalidArgumentException('An infinite rule must have a date or count limit.');
     }
@@ -184,7 +188,7 @@ class RlHelper implements DateRecurHelperInterface {
   /**
    * {@inheritdoc}
    */
-  public function current() {
+  public function current(): DateRange {
     $occurrenceStart = $this->set->current();
     $occurrenceEnd = clone $occurrenceStart;
     $occurrenceEnd->add($this->recurDiff);
@@ -194,28 +198,28 @@ class RlHelper implements DateRecurHelperInterface {
   /**
    * {@inheritdoc}
    */
-  public function next() {
+  public function next(): void {
     $this->set->next();
   }
 
   /**
    * {@inheritdoc}
    */
-  public function key() {
+  public function key(): ?int {
     return $this->set->key();
   }
 
   /**
    * {@inheritdoc}
    */
-  public function valid() {
+  public function valid(): bool {
     return $this->set->valid();
   }
 
   /**
    * {@inheritdoc}
    */
-  public function rewind() {
+  public function rewind(): void {
     $this->set->rewind();
   }
 
@@ -227,7 +231,7 @@ class RlHelper implements DateRecurHelperInterface {
    *
    * @internal this method is specific to rlanvin/rrule implementation only.
    */
-  public function getRlRuleset() {
+  public function getRlRuleset(): RlRSet {
     return $this->set;
   }
 

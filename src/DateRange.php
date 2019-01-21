@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur;
 
 /**
@@ -40,7 +42,7 @@ class DateRange {
    * @return \DateTimeInterface
    *   The start date.
    */
-  public function getStart() {
+  public function getStart(): \DateTimeInterface {
     return $this->start;
   }
 
@@ -69,7 +71,7 @@ class DateRange {
    * @return \DateTimeInterface
    *   The end date.
    */
-  public function getEnd() {
+  public function getEnd(): \DateTimeInterface {
     return $this->end;
   }
 
@@ -98,7 +100,7 @@ class DateRange {
    * @throws \InvalidArgumentException
    *   When there is a problem with the start and/or end date.
    */
-  protected function validateDates() {
+  protected function validateDates(): void {
     // Wait until both start and end are set before validating.
     if ($this->start && $this->end) {
       // Normalize end date timezone.

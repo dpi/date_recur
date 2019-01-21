@@ -5,6 +5,8 @@
  * Contains hooks for date_recur module.
  */
 
+declare(strict_types = 1);
+
 use Drupal\Core\Render\Element;
 use Drupal\date_recur\DateRecurCachedHooks;
 use Drupal\date_recur\DateRecurViewsHooks;
@@ -13,7 +15,7 @@ use Drupal\field\FieldStorageConfigInterface;
 /**
  * Implements hook_theme().
  */
-function date_recur_theme($existing, $type, $theme, $path) {
+function date_recur_theme(array $existing, string $type, string $theme, string $path): array {
   /** @var \Drupal\date_recur\DateRecurCachedHooks $cachedHooks */
   $cachedHooks = \Drupal::classResolver(DateRecurCachedHooks::class);
   return $cachedHooks->hookTheme($existing, $type, $theme, $path);
@@ -22,7 +24,7 @@ function date_recur_theme($existing, $type, $theme, $path) {
 /**
  * Implements hook_field_info_alter().
  */
-function date_recur_field_info_alter(&$info) {
+function date_recur_field_info_alter(array &$info): void {
   /** @var \Drupal\date_recur\DateRecurCachedHooks $cachedHooks */
   $cachedHooks = \Drupal::classResolver(DateRecurCachedHooks::class);
   $cachedHooks->fieldInfoAlter($info);
@@ -31,7 +33,7 @@ function date_recur_field_info_alter(&$info) {
 /**
  * Implements hook_field_views_data().
  */
-function date_recur_field_views_data(FieldStorageConfigInterface $fieldDefinition) {
+function date_recur_field_views_data(FieldStorageConfigInterface $fieldDefinition): array {
   /** @var \Drupal\date_recur\DateRecurViewsHooks $viewsHooks */
   $viewsHooks = \Drupal::classResolver(DateRecurViewsHooks::class);
   return $viewsHooks->fieldViewsData($fieldDefinition);
@@ -40,7 +42,7 @@ function date_recur_field_views_data(FieldStorageConfigInterface $fieldDefinitio
 /**
  * Implements hook_views_data().
  */
-function date_recur_views_data() {
+function date_recur_views_data(): array {
   /** @var \Drupal\date_recur\DateRecurViewsHooks $viewsHooks */
   $viewsHooks = \Drupal::classResolver(DateRecurViewsHooks::class);
   return $viewsHooks->viewsData();
@@ -49,7 +51,7 @@ function date_recur_views_data() {
 /**
  * Implements hook_views_data_alter().
  */
-function date_recur_views_data_alter(array &$data) {
+function date_recur_views_data_alter(array &$data): void {
   /** @var \Drupal\date_recur\DateRecurViewsHooks $viewsHooks */
   $viewsHooks = \Drupal::classResolver(DateRecurViewsHooks::class);
   $viewsHooks->viewsDataAlter($data);
@@ -63,7 +65,7 @@ function date_recur_views_data_alter(array &$data) {
  *   - element: An associative array containing a Form API structure to be
  *     rendered as a table.
  */
-function template_preprocess_date_recur_settings_frequency_table(array &$variables) {
+function template_preprocess_date_recur_settings_frequency_table(array &$variables): void {
   $partTitles = [];
 
   // Transfer elements to 'table' key so they can be iterated on without

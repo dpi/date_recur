@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur\Plugin\views\field;
 
 use Drupal\Core\Datetime\DrupalDateTime;
@@ -21,7 +23,7 @@ class DateRecurDate extends Date {
   /**
    * {@inheritdoc}
    */
-  public function getValue(ResultRow $values, $field = NULL) {
+  public function getValue(ResultRow $values, $field = NULL): ?int {
     $value = parent::getValue($values, $field);
 
     assert(isset($this->configuration['source date format']));

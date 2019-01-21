@@ -46,6 +46,8 @@ use Drupal\entity_test\Entity\EntityTest;
  *   },
  *   field_ui_base_route = "entity.dr_entity_test.admin_form",
  * )
+ *
+ * @property array dr
  */
 class DrEntityTest extends EntityTest {
 

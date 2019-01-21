@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur;
 
 use Drupal\Core\StringTranslation\TranslatableMarkup;
@@ -14,7 +16,7 @@ final class DateRecurGranularityMap {
    *
    * Larger weights correspond to smaller time units.
    */
-  const GRANULARITY = [
+  public const GRANULARITY = [
     'year' => 1,
     'month' => 2,
     'day' => 3,
@@ -24,7 +26,7 @@ final class DateRecurGranularityMap {
   /**
    * Granularities and their associated date() format.
    */
-  const GRANULARITY_DATE_FORMATS = [
+  public const GRANULARITY_DATE_FORMATS = [
     'year' => 'Y',
     'month' => 'Y-m',
     'day' => 'Y-m-d',
@@ -34,7 +36,7 @@ final class DateRecurGranularityMap {
   /**
    * Granularities and their associated regex for validation.
    */
-  const GRANULARITY_EXPRESSIONS = [
+  public const GRANULARITY_EXPRESSIONS = [
     'year' => '/^\d{4}$/',
     'month' => '/^\d{4}\-\d{2}$/',
     'day' => '/^\d{4}\-\d{2}-\d{2}$/',
@@ -47,7 +49,7 @@ final class DateRecurGranularityMap {
    * @return \Drupal\Core\StringTranslation\TranslatableMarkup[]
    *   Labels for granularities keyed by granularity.
    */
-  public static function granularityLabels() {
+  public static function granularityLabels(): array {
     return [
       'year' => new TranslatableMarkup('Absolute year'),
       'month' => new TranslatableMarkup('Absolute month'),
@@ -65,7 +67,7 @@ final class DateRecurGranularityMap {
    * @return \Drupal\Core\StringTranslation\TranslatableMarkup[]
    *   Failed validation messages for granularities keyed by granularity.
    */
-  public static function granularityExpectedFormatMessages($sample) {
+  public static function granularityExpectedFormatMessages(string $sample): array {
     return [
       'year' => \t('YYYY (Year, for example: @sample)', ['@sample' => $sample]),
       'month' => \t('YYYY-MM (Year-month, for example: @sample)', ['@sample' => $sample]),

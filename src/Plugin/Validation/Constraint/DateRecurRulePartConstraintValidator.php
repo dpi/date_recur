@@ -1,10 +1,13 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur\Plugin\Validation\Constraint;
 
 use Drupal\date_recur\DateRecurHelper;
 use Drupal\date_recur\DateRecurRruleMap;
 use Drupal\date_recur\Exception\DateRecurRulePartIncompatible;
+use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintValidator;
 
@@ -30,9 +33,9 @@ class DateRecurRulePartConstraintValidator extends ConstraintValidator {
   /**
    * {@inheritdoc}
    */
-  public function validate($value, Constraint $constraint) {
-    /** @var \Drupal\date_recur\Plugin\Validation\Constraint\DateRecurRulePartConstraint $constraint */
-    /** @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $value */
+  public function validate($value, Constraint $constraint): void {
+    assert($value instanceof DateRecurItem);
+    assert($constraint instanceof DateRecurRulePartConstraint);
     /** @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList $fieldList */
     $fieldList = $value->getParent();
     $grid = $fieldList->getPartGrid();
@@ -53,11 +56,12 @@ class DateRecurRulePartConstraintValidator extends ConstraintValidator {
     }
 
     foreach ($helper->getRules() as $rule) {
+      /** @var \Drupal\date_recur\DateRecurRuleInterface $rule */
       $frequency = $rule->getFrequency();
       // Check if a frequency is supported.
       if (!$grid->isFrequencyAllowed($frequency)) {
         $frequencyLabels = $this->getFrequencyLabels();
-        $frequencyLabel = isset($frequencyLabels[$frequency]) ? $frequencyLabels[$frequency] : $frequency;
+        $frequencyLabel = $frequencyLabels[$frequency] ?? $frequency;
         $this->context->addViolation($constraint->disallowedFrequency, ['%frequency' => $frequencyLabel]);
 
         // If the frequency isn't supported then dont continue validating its
@@ -72,16 +76,16 @@ class DateRecurRulePartConstraintValidator extends ConstraintValidator {
           // Check if a part is supported.
           if (!$grid->isPartAllowed($frequency, $part)) {
             $partLabels = $this->getPartLabels();
-            $partLabel = isset($partLabels[$part]) ? $partLabels[$part] : $part;
+            $partLabel = $partLabels[$part] ?? $part;
             $this->context->addViolation($constraint->disallowedPart, ['%part' => $partLabel]);
           }
         }
         catch (DateRecurRulePartIncompatible $e) {
           // If a part is incompatible, add a violation.
           $frequencyLabels = $this->getFrequencyLabels();
-          $frequencyLabel = isset($frequencyLabels[$frequency]) ? $frequencyLabels[$frequency] : $frequency;
+          $frequencyLabel = $frequencyLabels[$frequency] ?? $frequency;
           $partLabels = $this->getPartLabels();
-          $partLabel = isset($partLabels[$part]) ? $partLabels[$part] : $part;
+          $partLabel = $partLabels[$part] ?? $part;
           $this->context->addViolation($constraint->incompatiblePart, [
             '%frequency' => $frequencyLabel,
             '%part' => $partLabel,
@@ -97,7 +101,7 @@ class DateRecurRulePartConstraintValidator extends ConstraintValidator {
    * @return array
    *   Labels for frequencies keyed by part.
    */
-  protected function getFrequencyLabels() {
+  protected function getFrequencyLabels(): array {
     if (!isset($this->frequencyLabels)) {
       $this->frequencyLabels = DateRecurRruleMap::frequencyLabels();
     }
@@ -110,7 +114,7 @@ class DateRecurRulePartConstraintValidator extends ConstraintValidator {
    * @return array
    *   Labels for parts keyed by part.
    */
-  protected function getPartLabels() {
+  protected function getPartLabels(): array {
     if (!isset($this->partLabels)) {
       $this->partLabels = DateRecurRruleMap::partLabels();
     }

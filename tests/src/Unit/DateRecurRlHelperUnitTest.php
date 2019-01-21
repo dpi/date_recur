@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\Tests\date_recur\Unit;
 
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
@@ -148,24 +150,17 @@ foobar';
   /**
    * Creates a new helper.
    *
-   * Uses same arguments as
-   * \Drupal\date_recur\DateRecurHelperInterface::createInstance.
-   *
-   * @param string $string
-   *   The repeat rule.
-   * @param \DateTimeInterface $dtStart
-   *   The initial occurrence start date.
-   * @param \DateTimeInterface|null $dtStartEnd
-   *   The initial occurrence end date, or NULL to use start date.
+   * @param string|\DateTimeInterface|null|mixed $args
+   *   Uses same arguments as
+   *   \Drupal\date_recur\DateRecurHelperInterface::createInstance.
    *
    * @return \Drupal\date_recur\DateRecurHelperInterface
    *   A new date recur helper instance.
    *
    * @see \Drupal\date_recur\DateRecurHelperInterface::createInstance
    */
-  protected function createHelper($string, \DateTimeInterface $dtStart, \DateTimeInterface $dtStartEnd = NULL) {
-    // @todo convert to splat for PHP5.6/7 version upgrade.
-    return RlHelper::createInstance($string, $dtStart, $dtStartEnd);
+  protected function createHelper(...$args) {
+    return RlHelper::createInstance(...func_get_args());
   }
 
 }

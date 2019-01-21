@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur;
 
 use Drupal\Core\Database\Connection;
@@ -103,7 +105,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
    * @see \hook_views_data()
    * @see \date_recur_views_data()
    */
-  public function viewsData() {
+  public function viewsData(): array {
     $allFields = $this->getDateRecurFields();
     $data = [];
     foreach ($allFields as $entityTypeId => $fields) {
@@ -141,7 +143,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
           'base' => $occurrenceTableName,
           'base field' => isset($entityRevisionField) ? 'revision_id' : 'entity_id',
           'help' => $this->t('Get all occurrences for recurring date field @field_name', $tArgs),
-          'field' => isset($entityRevisionField) ? $entityRevisionField : $entityIdField,
+          'field' => $entityRevisionField ?? $entityIdField,
           // Add new 'title'.
           'title' => $this->t('Occurrences of @field_name', $tArgs),
           // Default label for relationship in the UI.
@@ -186,7 +188,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
    * @see \hook_views_data_alter()
    * @see \date_recur_views_data_alter()
    */
-  public function viewsDataAlter(array &$data) {
+  public function viewsDataAlter(array &$data): void {
     $removeFieldKeys = $this->getViewsPluginTypes();
     $removeFieldKeys = array_flip($removeFieldKeys);
 
@@ -234,7 +236,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
    * @see \hook_field_views_data()
    * @see \date_recur_field_views_data()
    */
-  public function fieldViewsData(FieldStorageConfigInterface $fieldDefinition) {
+  public function fieldViewsData(FieldStorageConfigInterface $fieldDefinition): array {
     $data = [];
 
     $entityTypeId = $fieldDefinition->getTargetEntityTypeId();
@@ -297,7 +299,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
     // \datetime_range_field_views_data().
     foreach ($fieldTable as $key => &$definitions) {
       /** @var \Drupal\Core\StringTranslation\TranslatableMarkup|string|null $originalTitle */
-      $originalTitle = isset($definitions['title']) ? $definitions['title'] : '';
+      $originalTitle = $definitions['title'] ?? '';
       $tArgs = $originalTitle instanceof TranslatableMarkup ? $originalTitle->getArguments() : [];
       $tArgs['@field_label'] = $fieldLabel;
 
@@ -340,7 +342,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
    * @return array
    *   An array of arrays of date recur fields keyed by entity type ID.
    */
-  protected function getDateRecurFields() {
+  protected function getDateRecurFields(): array {
     // Date recur fields keyed by entity type id.
     $fields = [];
 
@@ -355,7 +357,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
         $entityType->entityClassImplements(FieldableEntityInterface::class)) {
         $fields[$entityType->id()] = array_filter(
           $this->entityFieldManager->getFieldStorageDefinitions($entityType->id()),
-          function (FieldStorageDefinitionInterface $field) {
+          function (FieldStorageDefinitionInterface $field): bool {
             $typeDefinition = $this->typedDataManager->getDefinition('field_item:' . $field->getType());
             // @see \Drupal\date_recur\DateRecurCachedHooks::fieldInfoAlter
             return isset($typeDefinition[DateRecurOccurrences::IS_DATE_RECUR]);
@@ -381,7 +383,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
    * @return string
    *   The most popular label for a field storage.
    */
-  protected function getFieldLabel($entityTypeId, $fieldName) {
+  protected function getFieldLabel($entityTypeId, $fieldName): string {
     return \views_entity_field_label($entityTypeId, $fieldName)[0];
   }
 
@@ -394,7 +396,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
    * @return array
    *   The views data for a field.
    */
-  protected function getParentFieldViewsData(FieldStorageConfigInterface $fieldDefinition) {
+  protected function getParentFieldViewsData(FieldStorageConfigInterface $fieldDefinition): array {
     $this->moduleHandler->loadInclude('datetime_range', 'inc', 'datetime_range.views');
     return \datetime_range_field_views_data($fieldDefinition);
   }
@@ -405,7 +407,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
    * @return array
    *   An array of all views plugin types.
    */
-  protected function getViewsPluginTypes() {
+  protected function getViewsPluginTypes(): array {
     return Views::getPluginTypes();
   }
 
@@ -418,7 +420,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
    * @return string
    *   A date format.
    */
-  protected function getFieldDateFormat(FieldStorageDefinitionInterface $fieldDefinition) {
+  protected function getFieldDateFormat(FieldStorageDefinitionInterface $fieldDefinition): string {
     return $fieldDefinition->getSetting('datetime_type') == DateTimeItem::DATETIME_TYPE_DATE
       ? DateTimeItemInterface::DATE_STORAGE_FORMAT
       : DateTimeItemInterface::DATETIME_STORAGE_FORMAT;

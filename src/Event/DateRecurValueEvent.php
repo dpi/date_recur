@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur\Event;
 
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList;
@@ -45,7 +47,7 @@ class DateRecurValueEvent extends Event {
    * @return \Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList
    *   The date recur field item list.
    */
-  public function getField() {
+  public function getField(): DateRecurFieldItemList {
     return $this->field;
   }
 
@@ -55,7 +57,7 @@ class DateRecurValueEvent extends Event {
    * @return bool
    *   Whether the entity was created.
    */
-  public function isInsert() {
+  public function isInsert(): bool {
     return $this->insert;
   }
 

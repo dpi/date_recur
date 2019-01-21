@@ -504,7 +504,7 @@ class DateRecurBasicFormatterTest extends KernelTestBase {
 
     /** @var \Drupal\Core\Field\FormatterPluginManager $fieldFormatterManager */
     $fieldFormatterManager = $this->container->get('plugin.manager.field.formatter');
-    /** @var \Drupal\date_recur\Plugin\Field\FieldFormatter\DateRecurDefaultFormatter $instance */
+    /** @var \Drupal\date_recur\Plugin\Field\FieldFormatter\DateRecurBasicFormatter $instance */
     $instance = $fieldFormatterManager->getInstance($options);
     $expectedConfigDependencies = [
       'core.date_format.' . $dateFormat1->id(),

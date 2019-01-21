@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur;
 
 use Drupal\Core\StringTranslation\TranslatableMarkup;
@@ -14,7 +16,7 @@ final class DateRecurRruleMap {
    *
    * In no particular order.
    */
-  const FREQUENCIES = [
+  public const FREQUENCIES = [
     'SECONDLY',
     'MINUTELY',
     'HOURLY',
@@ -29,7 +31,7 @@ final class DateRecurRruleMap {
    *
    * In no particular order.
    */
-  const PARTS = [
+  public const PARTS = [
     'DTSTART',
     'UNTIL',
     'COUNT',
@@ -53,7 +55,7 @@ final class DateRecurRruleMap {
    *
    * @see https://tools.ietf.org/html/rfc5545#page-44
    */
-  const INCOMPATIBLE_PARTS = [
+  public const INCOMPATIBLE_PARTS = [
     'SECONDLY' => ['BYWEEKNO'],
     'MINUTELY' => ['BYWEEKNO'],
     'HOURLY' => ['BYWEEKNO'],
@@ -69,7 +71,7 @@ final class DateRecurRruleMap {
    * @return array
    *   Labels for parts keyed by part.
    */
-  public static function partLabels() {
+  public static function partLabels(): array {
     return [
       'DTSTART' => new TranslatableMarkup('Start date'),
       'UNTIL' => new TranslatableMarkup('Until'),
@@ -94,7 +96,7 @@ final class DateRecurRruleMap {
    * @return array
    *   Labels for frequencies keyed by frequency.
    */
-  public static function frequencyLabels() {
+  public static function frequencyLabels(): array {
     return [
       'SECONDLY' => new TranslatableMarkup('Secondly'),
       'MINUTELY' => new TranslatableMarkup('Minutely'),
@@ -112,7 +114,7 @@ final class DateRecurRruleMap {
    * @return array
    *   Descriptions for parts keyed by part.
    */
-  public static function partDescriptions() {
+  public static function partDescriptions(): array {
     return [
       'DTSTART' => new TranslatableMarkup('The starting date.'),
       'UNTIL' => new TranslatableMarkup('Specify a date occurrences cannot be generated after.'),
