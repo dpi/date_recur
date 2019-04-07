@@ -165,7 +165,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
     $startDate = $input['value'];
     /** @var \Drupal\Core\Datetime\DrupalDateTime|array|null $startDateEnd */
     $startDateEnd = $input['end_value'];
-    if (is_array($startDate) || is_array($startDate)) {
+    if (is_array($startDate) || is_array($startDateEnd)) {
       // Dates are an array if invalid input was submitted (e.g date:
       // 80616-02-01).
       return;

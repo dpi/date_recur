@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\Tests\date_recur\Kernel;
 
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
@@ -32,6 +34,7 @@ class DateRecurFieldTest extends KernelTestBase {
    */
   protected function setUp() {
     parent::setUp();
+    $this->installEntitySchema('entity_test');
     $field_storage = FieldStorageConfig::create([
       'entity_type' => 'entity_test',
       'field_name' => 'foo',

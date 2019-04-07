@@ -168,9 +168,7 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
 
     $hasDefaultStartDateType = !empty($defaultValue[0]['default_date_type']);
     $hasDefaultEndDateType = !empty($defaultValue[0]['default_end_date_type']);
-    if ($hasDefaultStartDateType || $hasDefaultEndDateType) {
-      // A time zone must be set to continue with default start/end dates.
-      assert(!empty($defaultDateTimeZone));
+    if (!empty($defaultDateTimeZone) && ($hasDefaultStartDateType || $hasDefaultEndDateType)) {
       $storageFormat = $definition->getSetting('datetime_type') == DateRecurItem::DATETIME_TYPE_DATE ? DateRecurItem::DATE_STORAGE_FORMAT : DateRecurItem::DATETIME_STORAGE_FORMAT;
 
       // Instruct 'value' and 'end_value' to convert from the localised time
