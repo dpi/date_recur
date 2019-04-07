@@ -252,12 +252,12 @@ class RlHelper implements DateRecurHelperInterface {
   /**
    * Get the set.
    *
-   * @return \Drupal\date_recur\Rl\RlRSet
+   * @return \RRule\RSet
    *   Returns the set.
    *
    * @internal this method is specific to rlanvin/rrule implementation only.
    */
-  public function getRlRuleset(): RlRSet {
+  public function getRlRuleset(): RSet {
     return $this->set;
   }
 

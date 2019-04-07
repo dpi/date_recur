@@ -115,6 +115,19 @@ class DateRecurRlHelperUnitTest extends UnitTestCase {
   }
 
   /**
+   * Tests multiple EXDATE values.
+   */
+  public function testExdate() {
+    $dtStart = new \DateTime('9am 16 June 2014');
+    $rrule = 'RRULE:FREQ=DAILY;COUNT=10';
+    $rrule .= "\nEXDATE:20140617T000000Z,20140618T000000Z";
+    $instance = $this->createHelper($rrule, $dtStart);
+
+    $exdates = $instance->getExDates();
+    $this->assertCount(2, $exdates);
+  }
+
+  /**
    * Tests parts that were not passed originally, are not returned.
    */
   public function testRedundantPartsOmitted() {
