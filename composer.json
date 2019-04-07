@@ -11,7 +11,12 @@
     "source": "http://cgit.drupalcode.org/date_recur"
   },
   "require": {
+    "php": "^7.1",
+    "drupal/core": "^8.6",
     "rlanvin/php-rrule": "1.*"
+  },
+  "require-dev": {
+    "drupal/token": "^1.5"
   },
   "suggest": {
     "drupal/date_recur_interactive": "Provides an interactive recurring date widget."

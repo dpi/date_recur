@@ -1,13 +1,15 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur\Plugin\Field\FieldWidget;
 
 use Drupal\Component\Utility\NestedArray;
+use Drupal\Core\Datetime\DrupalDateTime;
 use Drupal\Core\Datetime\Element\Datetime;
 use Drupal\Core\Field\FieldItemListInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\date_recur\DateRecurHelper;
-use Drupal\date_recur\DateRecurUtility;
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem;
 use Drupal\datetime\Plugin\Field\FieldType\DateTimeItem;
 use Drupal\datetime_range\Plugin\Field\FieldWidget\DateRangeDefaultWidget;
@@ -30,45 +32,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
   /**
    * {@inheritdoc}
    */
-  public static function defaultSettings() {
-    return [
-      'timezone_override' => '',
-    ] + parent::defaultSettings();
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function settingsForm(array $form, FormStateInterface $form_state) {
-    $elements = parent::settingsForm($form, $form_state);
-
-    // Aka default time zone.
-    $elements['timezone_override'] = [
-      '#type' => 'select',
-      '#title' => $this->t('Default time zone'),
-      '#description' => $this->t('Dates will repeat differently depending on time zone. For example: if you want a rule to repeat every Wednesday, the Wednesday will start and end at different times depending on the time zone. Recommended value: use current user time zone.'),
-      '#options' => $this->getTimeZoneOptions(),
-      '#default_value' => $this->getSetting('timezone_override'),
-      '#empty_option' => $this->t('- Use current user time zone -'),
-    ];
-
-    return $elements;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function settingsSummary() {
-    $summary = parent::settingsSummary();
-    $timeZone = $this->getSetting('timezone_override') ?: $this->t('User time zone');
-    $summary[] = $this->t('Default time zone: @time_zone', ['@time_zone' => $timeZone]);
-    return $summary;
-  }
-
-  /**
-   * {@inheritdoc}
-   */
-  public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state) {
+  public function formElement(FieldItemListInterface $items, $delta, array $element, array &$form, FormStateInterface $form_state): array {
     $element = parent::formElement($items, $delta, $element, $form, $form_state);
     $element['#theme'] = 'date_recur_basic_widget';
     $element['#element_validate'][] = [$this, 'validateRrule'];
@@ -95,15 +59,16 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
     $element['value']['#title'] = $this->t('Start');
     $element['end_value']['#title'] = $this->t('End');
     $element['end_value']['#description'] = $this->t('Leave end empty to copy start date; the occurrence will therefore not have any duration.');
+    // The end date is never required. Start date is copied over if end date is
+    // empty.
+    $element['end_value']['#required'] = FALSE;
     $element['value']['#group'] = $element['end_value']['#group'] = implode('][', $firstOccurrenceParents);
 
     // Add custom value callbacks to correctly form a date from time zone field.
     $element['value']['#value_callback'] = $element['end_value']['#value_callback'] = [$this, 'dateValueCallback'];
 
     // Saved values (should) always have a time zone.
-    $timeZone = isset($items[$delta]->timezone)
-      ? $items[$delta]->timezone
-      : $this->getSetting('timezone_override') ?: $this->getCurrentUserTimeZone();
+    $timeZone = $items[$delta]->timezone ?? NULL;
 
     $zones = $this->getTimeZoneOptions();
     $element['timezone'] = [
@@ -115,7 +80,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
 
     $element['rrule'] = [
       '#type' => 'textarea',
-      '#default_value' => isset($items[$delta]->rrule) ? $items[$delta]->rrule : NULL,
+      '#default_value' => $items[$delta]->rrule ?? NULL,
       '#title' => $this->t('Repeat rule'),
       '#description' => $this->t('Repeat rule in <a href=":link">iCalendar Recurrence Rule</a> (RRULE) format.', [
         ':link' => 'https://icalendar.org/iCalendar-RFC-5545/3-8-5-3-recurrence-rule.html',
@@ -141,15 +106,26 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    * @return mixed
    *   The value to assign to the element.
    */
-  public function dateValueCallback(array $element, $input, FormStateInterface $form_state) {
+  public function dateValueCallback(array $element, $input, FormStateInterface $form_state): array {
     if ($input !== FALSE) {
-      $timeZonePath = $element['#parents'];
-      array_pop($timeZonePath);
+      $timeZonePath = array_slice($element['#parents'], 0, -1);
       $timeZonePath[] = 'timezone';
 
       // Warning: The time zone is not yet validated, make sure it is valid
       // before using.
       $submittedTimeZone = NestedArray::getValue($form_state->getUserInput(), $timeZonePath);
+      if (!isset($submittedTimeZone)) {
+        // If no time zone was submitted, such as when the 'timezone' field is
+        // set to #access => FALSE, its necessary to fall back to the fields
+        // default value.
+        $timeZoneFieldPath = array_slice($element['#array_parents'], 0, -1);
+        $timeZoneFieldPath[] = 'timezone';
+        $timeZoneField = NestedArray::getValue($form_state->getCompleteForm(), $timeZoneFieldPath);
+        $submittedTimeZone = isset($timeZoneField["#value"])
+          ? $timeZoneField["#value"]
+          : ($timeZoneField["#default_value"] ?? NULL);
+      }
+
       $allTimeZones = \DateTimeZone::listIdentifiers();
       // @todo Add test for invalid submitted time zone.
       if (!in_array($submittedTimeZone, $allTimeZones)) {
@@ -183,7 +159,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    * @param array $complete_form
    *   The complete form structure.
    */
-  public function validateRrule(array &$element, FormStateInterface $form_state, array &$complete_form) {
+  public function validateRrule(array &$element, FormStateInterface $form_state, array &$complete_form): void {
     $input = NestedArray::getValue($form_state->getValues(), $element['#parents']);
     /** @var \Drupal\Core\Datetime\DrupalDateTime|array|null $startDate */
     $startDate = $input['value'];
@@ -214,8 +190,8 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
       try {
         DateRecurHelper::create(
           $rrule,
-          DateRecurUtility::toPhpDateTime($startDate),
-          DateRecurUtility::toPhpDateTime($startDateEnd)
+          $startDate->getPhpDateTime(),
+          $startDateEnd->getPhpDateTime()
         );
       }
       catch (\Exception $e) {
@@ -231,7 +207,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    *   A list of time zones where keys are PHP time zone codes, and values are
    *   human readable and translatable labels.
    */
-  protected function getTimeZoneOptions() {
+  protected function getTimeZoneOptions(): array {
     return \system_time_zones(TRUE, TRUE);
   }
 
@@ -241,14 +217,16 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    * @return string
    *   A PHP time zone string.
    */
-  protected function getCurrentUserTimeZone() {
+  protected function getCurrentUserTimeZone(): string {
     return \drupal_get_user_timezone();
   }
 
   /**
    * {@inheritdoc}
    */
-  protected function createDefaultValue($date, $timezone) {
+  protected function createDefaultValue($date, $timezone): DrupalDateTime {
+    assert($date instanceof DrupalDateTime);
+    assert(is_string($timezone));
     // Cannot set time zone here as field item contains time zone.
     if ($this->getFieldSetting('datetime_type') == DateTimeItem::DATETIME_TYPE_DATE) {
       $date->setDefaultDateTime();
@@ -264,12 +242,12 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
    * @param \Drupal\date_recur\Plugin\Field\FieldType\DateRecurItem $item
    *   The date recur field item.
    */
-  protected function createDateRecurDefaultValue(array &$element, DateRecurItem $item) {
+  protected function createDateRecurDefaultValue(array &$element, DateRecurItem $item): void {
     $startDate = $item->start_date;
     $startDateEnd = $item->end_date;
     $timeZone = isset($item->timezone) ? new \DateTimeZone($item->timezone) : NULL;
     if ($timeZone) {
-      $element['value']['#date_timezone'] = $element['end_value']['#date_timezone'] = $timeZone;
+      $element['value']['#date_timezone'] = $element['end_value']['#date_timezone'] = $timeZone->getName();
       if ($startDate) {
         $startDate->setTimezone($timeZone);
         $element['value']['#default_value'] = $this->createDefaultValue($startDate, $timeZone->getName());

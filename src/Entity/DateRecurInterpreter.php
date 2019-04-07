@@ -1,9 +1,13 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur\Entity;
 
+use Drupal\Component\Plugin\LazyPluginCollection;
 use Drupal\Core\Config\Entity\ConfigEntityBase;
 use Drupal\date_recur\Plugin\DateRecurInterpreterPluginCollection;
+use Drupal\date_recur\Plugin\DateRecurInterpreterPluginInterface;
 
 /**
  * Defines an instance of Recurring Date interpreter.
@@ -77,7 +81,7 @@ class DateRecurInterpreter extends ConfigEntityBase implements DateRecurInterpre
    * @return \Drupal\Component\Plugin\LazyPluginCollection
    *   The plugin collection.
    */
-  protected function getPluginCollection() {
+  protected function getPluginCollection(): LazyPluginCollection {
     if (!$this->pluginCollection) {
       $this->pluginCollection = new DateRecurInterpreterPluginCollection(
         \Drupal::service('plugin.manager.date_recur_interpreter'),
@@ -92,21 +96,21 @@ class DateRecurInterpreter extends ConfigEntityBase implements DateRecurInterpre
   /**
    * {@inheritdoc}
    */
-  public function getPluginCollections() {
+  public function getPluginCollections(): array {
     return ['settings' => $this->getPluginCollection()];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function getPlugin() {
+  public function getPlugin(): DateRecurInterpreterPluginInterface {
     return $this->getPluginCollection()->get($this->plugin);
   }
 
   /**
    * {@inheritdoc}
    */
-  public function setPlugin($plugin_id) {
+  public function setPlugin($plugin_id): void {
     $this->plugin = $plugin_id;
     $this->getPluginCollection()->addInstanceId($plugin_id);
   }

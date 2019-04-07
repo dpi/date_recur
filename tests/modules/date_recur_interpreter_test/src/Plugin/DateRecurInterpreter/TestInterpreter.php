@@ -21,7 +21,7 @@ class TestInterpreter extends DateRecurInterpreterPluginBase implements PluginFo
   /**
    * {@inheritdoc}
    */
-  public function defaultConfiguration() {
+  public function defaultConfiguration(): array {
     return [
       'show_foo' => FALSE,
     ];
@@ -30,7 +30,7 @@ class TestInterpreter extends DateRecurInterpreterPluginBase implements PluginFo
   /**
    * {@inheritdoc}
    */
-  public function interpret(array $rules, $language) {
+  public function interpret(array $rules, string $language): string {
     $pluginConfig = $this->getConfiguration();
 
     if ($pluginConfig['show_foo']) {
@@ -69,7 +69,7 @@ class TestInterpreter extends DateRecurInterpreterPluginBase implements PluginFo
   /**
    * {@inheritdoc}
    */
-  public function supportedLanguages() {
+  public function supportedLanguages(): array {
     return [
       'es',
     ];

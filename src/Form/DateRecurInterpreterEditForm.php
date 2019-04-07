@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types = 1);
+
 namespace Drupal\date_recur\Form;
 
 use Drupal\Core\Entity\EntityForm;
@@ -56,7 +58,7 @@ class DateRecurInterpreterEditForm extends EntityForm {
   /**
    * {@inheritdoc}
    */
-  public function form(array $form, FormStateInterface $form_state) {
+  public function form(array $form, FormStateInterface $form_state): array {
     $form = parent::form($form, $form_state);
 
     $dateRecurInterpreter = $this->getEntity();
@@ -74,10 +76,10 @@ class DateRecurInterpreterEditForm extends EntityForm {
       $form['configure'] = [
         '#tree' => TRUE,
       ];
-      $subform_state = SubformState::createForSubform($form['configure'], $form, $form_state);
+      $subformState = SubformState::createForSubform($form['configure'], $form, $form_state);
       $form['configure'] += $this->pluginFormFactory
         ->createInstance($plugin, $key)
-        ->buildConfigurationForm($form['configure'], $subform_state);
+        ->buildConfigurationForm($form['configure'], $subformState);
     }
 
     return $form;
@@ -86,30 +88,30 @@ class DateRecurInterpreterEditForm extends EntityForm {
   /**
    * {@inheritdoc}
    */
-  public function validateForm(array &$form, FormStateInterface $form_state) {
+  public function validateForm(array &$form, FormStateInterface $form_state): void {
     $key = 'configure';
     $plugin = $this->getEntity()->getPlugin();
     if ($plugin->hasFormClass($key)) {
-      $subform_state = SubformState::createForSubform($form['configure'], $form, $form_state);
+      $subformState = SubformState::createForSubform($form['configure'], $form, $form_state);
       $this->pluginFormFactory
         ->createInstance($plugin, $key)
-        ->validateConfigurationForm($form['configure'], $subform_state);
+        ->validateConfigurationForm($form['configure'], $subformState);
     }
   }
 
   /**
    * {@inheritdoc}
    */
-  public function save(array $form, FormStateInterface $form_state) {
+  public function save(array $form, FormStateInterface $form_state): void {
     $entity = $this->getEntity();
 
     $key = 'configure';
     $plugin = $entity->getPlugin();
     if ($plugin->hasFormClass($key)) {
-      $subform_state = SubformState::createForSubform($form['configure'], $form, $form_state);
+      $subformState = SubformState::createForSubform($form['configure'], $form, $form_state);
       $this->pluginFormFactory
         ->createInstance($plugin, $key)
-        ->submitConfigurationForm($form['configure'], $subform_state);
+        ->submitConfigurationForm($form['configure'], $subformState);
     }
 
     $entity->save();
