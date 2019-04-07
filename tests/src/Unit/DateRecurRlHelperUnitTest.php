@@ -123,7 +123,7 @@ class DateRecurRlHelperUnitTest extends UnitTestCase {
     $rrule .= "\nEXDATE:20140617T000000Z,20140618T000000Z";
     $instance = $this->createHelper($rrule, $dtStart);
 
-    $exdates = $instance->getExDates();
+    $exdates = $instance->getRlRuleset()->getExDates();
     $this->assertCount(2, $exdates);
   }
 
