@@ -88,11 +88,19 @@ class RlHelper implements DateRecurHelperInterface {
             break;
 
           case 'RDATE':
-            $this->set->addDate($value);
+            $rValues = explode(',', $value);
+            foreach ($rValues as $key => $rValue) {
+              $rValue = $this->fixDate($rValue, $dtStart);
+              $this->set->addDate($rValue);
+            }
             break;
 
           case 'EXDATE':
-            $this->set->addExDate($value);
+            $exValues = explode(',', $value);
+            foreach ($exValues as $key => $exValue) {
+              $exValue = $this->fixDate($exValue, $dtStart);
+              $this->set->addExDate($exValue);
+            }
             break;
 
           case 'EXRULE':
@@ -100,6 +108,24 @@ class RlHelper implements DateRecurHelperInterface {
         }
       }
     }
+  }
+
+  /**
+   * Set starttime and timezone for ex/r-dates.
+   *
+   * @param string $dateString
+   *   Date to be in-/excluded.
+   * @param \DateTimeInterface $dateStart
+   *   The initial occurrence start date.
+   *
+   * @return \DateTimeZone
+   *   Converted date.
+   */
+  protected function fixDate(string $dateString, \DateTimeInterface $dateStart) {
+    $date = RRule::parseDate($dateString);
+    $date->setTimezone($dateStart->getTimezone());
+    $date->setTime((int) $dateStart->format('H'), (int) $dateStart->format('i'));
+    return $date;
   }
 
   /**
