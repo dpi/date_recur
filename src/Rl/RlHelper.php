@@ -49,10 +49,10 @@ class RlHelper implements DateRecurHelperInterface {
     }
 
     $parts = [
+      'RRULE' => [],
       'RDATE' => [],
       'EXRULE' => [],
       'EXDATE' => [],
-      'RRULE' => [],
     ];
 
     $lines = explode("\n", $string);
