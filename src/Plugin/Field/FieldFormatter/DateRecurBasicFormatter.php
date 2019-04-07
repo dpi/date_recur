@@ -182,7 +182,7 @@ class DateRecurBasicFormatter extends DateRangeDefaultFormatter {
     $form['timezone_override']['#description'] = $this->t('Change the timezone used for displaying dates (not recommended).');
 
     $interpreterOptions = array_map(function (DateRecurInterpreterInterface $interpreter): string {
-      return $interpreter->label();
+      return $interpreter->label() ?? (string) $this->t('- Missing label -');
     }, $this->dateRecurInterpreterStorage->loadMultiple());
     $form['interpreter'] = [
       '#type' => 'select',

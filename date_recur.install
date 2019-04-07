@@ -267,8 +267,11 @@ function date_recur_update_8204(&$sandbox): void {
  */
 function date_recur_update_8205(&$sandbox): void {
   if (DateFormat::load('long') && !DateRecurInterpreter::load('default_interpreter')) {
-    $interpreter = DateRecurInterpreter::create([
+    $configFactory = \Drupal::configFactory();
+    $interpreter = $configFactory->getEditable('date_recur.interpreter.default_interpreter');
+    $interpreter->setData([
       'id' => 'default_interpreter',
+      'label' => 'Default interpreter',
       'plugin' => 'rl',
       'settings' => [
         'show_start_date' => TRUE,
@@ -277,7 +280,7 @@ function date_recur_update_8205(&$sandbox): void {
         'show_infinite' => TRUE,
       ],
     ]);
-    $interpreter->save();
+    $interpreter->save(TRUE);
   }
 }
 
