@@ -115,16 +115,133 @@ class DateRecurRlHelperUnitTest extends UnitTestCase {
   }
 
   /**
-   * Tests multiple EXDATE values.
+   * Tests single EXDATE value.
    */
   public function testExdate() {
-    $dtStart = new \DateTime('9am 16 June 2014');
-    $rrule = 'RRULE:FREQ=DAILY;COUNT=10';
-    $rrule .= "\nEXDATE:20140617T000000Z,20140618T000000Z";
+    $timeZone = new \DateTimeZone('Asia/Singapore');
+    // Difference between exdate (UTC) and Singapore is 8 hours.
+    $dtStart = new \DateTime('10am 16 June 2014', $timeZone);
+    $rrule = 'RRULE:FREQ=DAILY;COUNT=6
+EXDATE:20140617T020000Z';
     $instance = $this->createHelper($rrule, $dtStart);
 
-    $exdates = $instance->getRlRuleset()->getExDates();
-    $this->assertCount(2, $exdates);
+    $occurrences = $instance->getOccurrences();
+    $this->assertCount(5, $occurrences);
+    // Occurrence time zones are same as start date.
+    $this->assertEquals('Mon, 16 Jun 2014 10:00:00 +0800', $occurrences[0]->getStart()->format('r'));
+    $this->assertEquals('Wed, 18 Jun 2014 10:00:00 +0800', $occurrences[1]->getStart()->format('r'));
+    $this->assertEquals('Thu, 19 Jun 2014 10:00:00 +0800', $occurrences[2]->getStart()->format('r'));
+    $this->assertEquals('Fri, 20 Jun 2014 10:00:00 +0800', $occurrences[3]->getStart()->format('r'));
+    $this->assertEquals('Sat, 21 Jun 2014 10:00:00 +0800', $occurrences[4]->getStart()->format('r'));
+
+    // Exdate time zones are same as original, not same as start date.
+    $exDates = $instance->getRlRuleset()->getExDates();
+    $this->assertCount(1, $exDates);
+    $this->assertEquals('Tue, 17 Jun 2014 02:00:00 +0000', $exDates[0]->format('r'));
+  }
+
+  /**
+   * Tests multiple EXDATE values.
+   */
+  public function testExdateMultiple() {
+    $timeZone = new \DateTimeZone('Asia/Singapore');
+    // Difference between exdate (UTC) and Singapore is 8 hours.
+    $dtStart = new \DateTime('10am 16 June 2014', $timeZone);
+    $rrule = 'RRULE:FREQ=DAILY;COUNT=6
+EXDATE:20140617T020000Z,20140619T020000Z';
+    $instance = $this->createHelper($rrule, $dtStart);
+
+    $occurrences = $instance->getOccurrences();
+    $this->assertCount(4, $occurrences);
+    // Occurrence time zones are same as start date.
+    $this->assertEquals('Mon, 16 Jun 2014 10:00:00 +0800', $occurrences[0]->getStart()->format('r'));
+    $this->assertEquals('Wed, 18 Jun 2014 10:00:00 +0800', $occurrences[1]->getStart()->format('r'));
+    $this->assertEquals('Fri, 20 Jun 2014 10:00:00 +0800', $occurrences[2]->getStart()->format('r'));
+    $this->assertEquals('Sat, 21 Jun 2014 10:00:00 +0800', $occurrences[3]->getStart()->format('r'));
+
+    // Exdate time zones are same as original, not same as start date.
+    $exDates = $instance->getRlRuleset()->getExDates();
+    $this->assertCount(2, $exDates);
+    $this->assertEquals('Tue, 17 Jun 2014 02:00:00 +0000', $exDates[0]->format('r'));
+    $this->assertEquals('Thu, 19 Jun 2014 02:00:00 +0000', $exDates[1]->format('r'));
+  }
+
+  /**
+   * Tests EXDATE is ignored because of time zone differences.
+   */
+  public function testExdateTimezone() {
+    $timeZone = new \DateTimeZone('Asia/Singapore');
+    // Difference between exdate (UTC) and Singapore is 8 hours.
+    // Exdate will be ignored because it never happens at the same time as
+    // occurrences.
+    $dtStart = new \DateTime('9am 16 June 2014', $timeZone);
+    $rrule = 'RRULE:FREQ=DAILY;COUNT=6
+EXDATE:20140617T000000Z,20140618T000000Z';
+    $instance = $this->createHelper($rrule, $dtStart);
+
+    $occurrences = $instance->getOccurrences();
+    $this->assertCount(6, $occurrences);
+  }
+
+  /**
+   * Tests single RDATE value.
+   *
+   * Rdates serve to add extra fixed time occurrences, they are combined with
+   * any dates computed by RRULEs.
+   */
+  public function testRdate() {
+    $timeZone = new \DateTimeZone('Asia/Singapore');
+    $dtStart = new \DateTime('11am 4 Oct 2012', $timeZone);
+    $rrule = 'RRULE:FREQ=WEEKLY;COUNT=3
+RDATE:20121006T120000Z';
+    $instance = $this->createHelper($rrule, $dtStart);
+
+    // Tests the RDATE is found between all the RRULE occurrences, such that it
+    // is chronological date order, not simply appended to the RRULE list.
+    $occurrences = $instance->getOccurrences();
+    $this->assertCount(4, $occurrences);
+
+    // Occurrence time zones are same as start date.
+    $this->assertEquals('Thu, 04 Oct 2012 11:00:00 +0800', $occurrences[0]->getStart()->format('r'));
+    // The RDATE date/time zone is not normalised to the start-date time zone.
+    $this->assertEquals('Sat, 06 Oct 2012 12:00:00 +0000', $occurrences[1]->getStart()->format('r'));
+    $this->assertEquals('Thu, 11 Oct 2012 11:00:00 +0800', $occurrences[2]->getStart()->format('r'));
+    $this->assertEquals('Thu, 18 Oct 2012 11:00:00 +0800', $occurrences[3]->getStart()->format('r'));
+
+    // Rdate time zones are same as original, not same as start date.
+    $rDates = $instance->getRlRuleset()->getDates();
+    $this->assertCount(1, $rDates);
+    $this->assertEquals('Sat, 06 Oct 2012 12:00:00 +0000', $rDates[0]->format('r'));
+  }
+
+  /**
+   * Tests multiple RDATE values.
+   */
+  public function testRdateMultiple() {
+    $timeZone = new \DateTimeZone('Asia/Singapore');
+    $dtStart = new \DateTime('11am 4 Oct 2012', $timeZone);
+    $rrule = 'RRULE:FREQ=WEEKLY;COUNT=3
+RDATE:20121006T120000Z,20121013T120000Z';
+    $instance = $this->createHelper($rrule, $dtStart);
+
+    // Tests the RDATE is found between all the RRULE occurrences, such that it
+    // is chronological date order, not simply appended to the RRULE list.
+    $occurrences = $instance->getOccurrences();
+    $this->assertCount(5, $occurrences);
+
+    // Occurrence time zones are same as start date.
+    $this->assertEquals('Thu, 04 Oct 2012 11:00:00 +0800', $occurrences[0]->getStart()->format('r'));
+    // The RDATE date/time zone is not normalised to the start-date time zone.
+    $this->assertEquals('Sat, 06 Oct 2012 12:00:00 +0000', $occurrences[1]->getStart()->format('r'));
+    $this->assertEquals('Thu, 11 Oct 2012 11:00:00 +0800', $occurrences[2]->getStart()->format('r'));
+    $this->assertEquals('Sat, 13 Oct 2012 12:00:00 +0000', $occurrences[3]->getStart()->format('r'));
+    $this->assertEquals('Thu, 18 Oct 2012 11:00:00 +0800', $occurrences[4]->getStart()->format('r'));
+
+    // Rdate time zones are same as original, not same as start date.
+    $rDates = $instance->getRlRuleset()->getDates();
+    $this->assertCount(2, $rDates);
+    $this->assertEquals('Sat, 06 Oct 2012 12:00:00 +0000', $rDates[0]->format('r'));
+    $this->assertEquals('Sat, 13 Oct 2012 12:00:00 +0000', $rDates[1]->format('r'));
   }
 
   /**

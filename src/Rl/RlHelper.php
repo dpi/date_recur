@@ -7,6 +7,7 @@ namespace Drupal\date_recur\Rl;
 use Drupal\date_recur\DateRange;
 use Drupal\date_recur\DateRecurHelperInterface;
 use Drupal\date_recur\Exception\DateRecurHelperArgumentException;
+use RRule\RfcParser;
 use RRule\RRule;
 use RRule\RSet;
 
@@ -88,19 +89,17 @@ class RlHelper implements DateRecurHelperInterface {
             break;
 
           case 'RDATE':
-            $rValues = explode(',', $value);
-            foreach ($rValues as $key => $rValue) {
-              $rValue = $this->fixDate($rValue, $dtStart);
-              $this->set->addDate($rValue);
-            }
+            $dates = RfcParser::parseRDate('RDATE:' . $value);
+            array_walk($dates, function (\DateTimeInterface $value): void {
+              $this->set->addDate($value);
+            });
             break;
 
           case 'EXDATE':
-            $exValues = explode(',', $value);
-            foreach ($exValues as $key => $exValue) {
-              $exValue = $this->fixDate($exValue, $dtStart);
-              $this->set->addExDate($exValue);
-            }
+            $dates = RfcParser::parseExDate('EXDATE:' . $value);
+            array_walk($dates, function (\DateTimeInterface $value): void {
+              $this->set->addExDate($value);
+            });
             break;
 
           case 'EXRULE':
@@ -108,30 +107,6 @@ class RlHelper implements DateRecurHelperInterface {
         }
       }
     }
-  }
-
-  /**
-   * Set starttime and timezone for ex/r-dates.
-   *
-   * @param string $dateString
-   *   Date to be in-/excluded.
-   * @param \DateTimeInterface $dateStart
-   *   The initial occurrence start date.
-   *
-   * @return \DateTimeZone
-   *   Converted date.
-   */
-  protected function fixDate(string $dateString, \DateTimeInterface $dateStart) {
-    // Calculate time zone difference.
-    $offset = $dateStart->getOffset();
-    $interval = \DateInterval::createFromDateString((string) $offset . 'seconds');
-
-    $date = RRule::parseDate($dateString);
-    // Substract Time zone difference.
-    $date->sub($interval);
-    $date->setTimezone($dateStart->getTimezone());
-    $date->setTime((int) $dateStart->format('H'), (int) $dateStart->format('i'), (int) $dateStart->format('s'));
-    return $date;
   }
 
   /**
