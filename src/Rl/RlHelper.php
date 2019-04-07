@@ -122,9 +122,15 @@ class RlHelper implements DateRecurHelperInterface {
    *   Converted date.
    */
   protected function fixDate(string $dateString, \DateTimeInterface $dateStart) {
+    // Calculate time zone difference.
+    $offset = $dateStart->getOffset();
+    $interval = \DateInterval::createFromDateString((string) $offset . 'seconds');
+
     $date = RRule::parseDate($dateString);
+    // Substract Time zone difference.
+    $date->sub($interval);
     $date->setTimezone($dateStart->getTimezone());
-    $date->setTime((int) $dateStart->format('H'), (int) $dateStart->format('i'));
+    $date->setTime((int) $dateStart->format('H'), (int) $dateStart->format('i'), (int) $dateStart->format('s'));
     return $date;
   }
 
