@@ -1,2 +1,5 @@
+administer date_recur:
+  title: 'Administer Recurring Dates Field'
+
 date_recur manage interpreters:
   title: 'Recurring date interpreters'

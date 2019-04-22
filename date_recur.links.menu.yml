@@ -1,3 +1,9 @@
+date_recur.rebuild:
+  title: Rebuild Recurring Date Occurrence Tables
+  parent: system.admin_config_development
+  description: 'Rebuild occurrence tables for Views integration.'
+  route_name: date_recur.rebuild
+
 entity.date_recur_interpreter.collection:
   title: 'Recurring date interpreters'
   parent: system.admin_config_regional

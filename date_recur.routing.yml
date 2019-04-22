@@ -1,3 +1,11 @@
+date_recur.rebuild:
+  path: '/admin/config/development/date-recur/rebuild'
+  defaults:
+    _form: 'Drupal\date_recur\Form\DateRecurRebuildTablesForm'
+    _title: 'Rebuild Recurring Date Occurrence Tables'
+  requirements:
+    _permission: 'administer date_recur'
+
 entity.date_recur_interpreter.collection:
   path: '/admin/config/regional/recurring-date-interpreters'
   defaults:
