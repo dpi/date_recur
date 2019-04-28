@@ -27,7 +27,7 @@ class DateRecurRebuildTablesForm extends FormBase {
    * {@inheritdoc}
    */
   public function buildForm(array $form, FormStateInterface $form_state): array {
-    $entityTypeManager = \Drupal::entityTypeManager()
+    $entityTypeManager = \Drupal::entityTypeManager();
     /** @var \Drupal\Core\Entity\EntityFieldManagerInterface $fieldManager */
     $fieldManager = \Drupal::service('entity_field.manager');
 
