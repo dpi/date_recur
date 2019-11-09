@@ -445,12 +445,13 @@ class DateRecurItem extends DateRangeItem {
   public function isEmpty(): bool {
     $start_value = $this->get('value')->getValue();
     $end_value = $this->get('end_value')->getValue();
-    return
+    return (
       // Use OR operator instead of AND from parent. See
       // https://www.drupal.org/project/drupal/issues/3025812
       ($start_value === NULL || $start_value === '') ||
       ($end_value === NULL || $end_value === '') ||
-      empty($this->get('timezone')->getValue());
+      empty($this->get('timezone')->getValue())
+    );
   }
 
   /**
