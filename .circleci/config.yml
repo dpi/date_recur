@@ -13,6 +13,18 @@ jobs:
           key: my-key-{{ checksum "drupal/web/modules/contrib/date_recur/composer.lock" }}
           paths:
             - drupal/
+  phpcs:
+    docker:
+      - image: circleci/php:7.3-cli
+    steps:
+      - checkout:
+          path: tmp/
+      - restore_cache:
+          key: my-key-{{ checksum "tmp/composer.lock" }}
+      - run: cd drupal/web/modules/contrib/date_recur && ./vendor/bin/phpcs . > ~/phpcs-report.txt
+      - store_artifacts:
+          path: ~/phpcs-report.txt
+
   test:
     docker:
       - image: circleci/php:7.3-cli
@@ -35,6 +47,9 @@ workflows:
   test:
     jobs:
       - build
+      - phpcs:
+          requires:
+            - build
       - test:
           requires:
             - build
