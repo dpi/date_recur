@@ -10,7 +10,7 @@ jobs:
           path: drupal/web/modules/contrib/date_recur
       - run: cd drupal/web/modules/contrib/date_recur && composer install --ignore-platform-reqs
       - save_cache:
-          key: my-key-{{ checksum "drupal/web/modules/contrib/date_recur/composer.lock" }}
+          key: my-key-{{ checksum "drupal/web/modules/contrib/date_recur/composer.lock" }}-{{ .Revision }}
           paths:
             - drupal/
   phpcs:
@@ -20,7 +20,7 @@ jobs:
       - checkout:
           path: tmp/
       - restore_cache:
-          key: my-key-{{ checksum "tmp/composer.lock" }}
+          key: my-key-{{ checksum "tmp/composer.lock" }}-{{ .Revision }}
       - run: cd drupal/web/modules/contrib/date_recur && ./vendor/bin/phpcs . > ~/phpcs-report.txt
       - store_artifacts:
           path: ~/phpcs-report.txt
@@ -34,7 +34,7 @@ jobs:
       - checkout:
           path: tmp/
       - restore_cache:
-          key: my-key-{{ checksum "tmp/composer.lock" }}
+          key: my-key-{{ checksum "tmp/composer.lock" }}-{{ .Revision }}
       - run: sudo apt update
       - run: sudo apt install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev
       - run: sudo docker-php-ext-install gd
