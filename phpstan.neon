@@ -12,6 +12,7 @@ parameters:
     - module
     - theme
     - profile
+    - install
 includes:
   - vendor/mglaman/phpstan-drupal/extension.neon
   - vendor/phpstan/phpstan-deprecation-rules/rules.neon

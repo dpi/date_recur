@@ -23,6 +23,9 @@ class DateRecurUtility {
    *
    * @return \DateTime
    *   A date time with the smallest value given granularity and input.
+   *
+   * @throws \InvalidArgumentException
+   *   When date or granularity results in an invalid data object.
    */
   public static function createSmallestDateFromInput(string $granularity, string $value, \DateTimeZone $timezone): \DateTime {
     return static::createDateFromInput($granularity, $value, $timezone, 'start');
@@ -40,6 +43,9 @@ class DateRecurUtility {
    *
    * @return \DateTime
    *   A date time with the smallest value given granularity and input.
+   *
+   * @throws \InvalidArgumentException
+   *   When date or granularity results in an invalid data object.
    */
   public static function createLargestDateFromInput(string $granularity, string $value, \DateTimeZone $timezone): \DateTime {
     return static::createDateFromInput($granularity, $value, $timezone, 'end');
@@ -61,6 +67,9 @@ class DateRecurUtility {
    * @return \DateTime
    *   A date time with the smallest value given granularity and input.
    *
+   * @throws \InvalidArgumentException
+   *   When date or granularity results in an invalid data object.
+   *
    * @internal
    */
   protected static function createDateFromInput(string $granularity, string $value, \DateTimeZone $timezone, string $end): \DateTime {
@@ -74,6 +83,9 @@ class DateRecurUtility {
     // object to reconstruct the date at the beginning of the granularity
     // period.
     $knownDate = \DateTime::createFromFormat($format, $value, $timezone);
+    if (!$knownDate) {
+      throw new \InvalidArgumentException('Unable to create date from input.');
+    }
 
     $granularityComparison = DateRecurGranularityMap::GRANULARITY;
     $granularityInt = $granularityComparison[$granularity];
