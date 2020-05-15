@@ -44,7 +44,7 @@ class DateRange {
    *   The start date.
    */
   public function getStart(): \DateTimeInterface {
-    return $this->start;
+    return clone $this->start;
   }
 
   /**
@@ -73,7 +73,7 @@ class DateRange {
    *   The end date.
    */
   public function getEnd(): \DateTimeInterface {
-    return $this->end;
+    return clone $this->end;
   }
 
   /**
