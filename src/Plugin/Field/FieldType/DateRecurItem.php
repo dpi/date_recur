@@ -418,8 +418,12 @@ class DateRecurItem extends DateRangeItem {
       return $this->helper;
     }
 
+    $timeZoneString = $this->timezone;
+    if (empty($timeZoneString)) {
+      throw new DateRecurHelperArgumentException('Missing time zone');
+    }
+
     try {
-      $timeZoneString = $this->timezone;
       // If its not a string then cast it so a TypeError is not thrown. An empty
       // string will cause the exception to be thrown.
       $timeZone = new \DateTimeZone(is_string($timeZoneString) ? $timeZoneString : '');
