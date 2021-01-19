@@ -17,7 +17,7 @@ class DateRecurOccurrenceTableSchemaTest extends KernelTestBase {
    *
    * @var string
    */
-  protected $fieldName;
+  protected string $fieldName;
 
   /**
    * {@inheritdoc}

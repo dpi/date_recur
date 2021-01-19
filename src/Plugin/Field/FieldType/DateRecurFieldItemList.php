@@ -26,7 +26,7 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
    *
    * @var \Symfony\Component\EventDispatcher\EventDispatcherInterface|null
    */
-  protected $eventDispatcher = NULL;
+  protected ?EventDispatcherInterface $eventDispatcher = NULL;
 
   /**
    * {@inheritdoc}
@@ -245,7 +245,7 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
   public function getPartGrid(): DateRecurPartGrid {
     $partSettings = $this->getFieldDefinition()->getSetting('parts');
     // Existing field configs may not have a parts setting yet.
-    $partSettings = $partSettings ?? [];
+    $partSettings ??= [];
     return DateRecurPartGrid::configSettingsToGrid($partSettings);
   }
 

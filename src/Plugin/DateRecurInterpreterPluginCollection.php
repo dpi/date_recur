@@ -17,7 +17,7 @@ class DateRecurInterpreterPluginCollection extends DefaultSingleLazyPluginCollec
    *
    * @var string
    */
-  protected $id;
+  protected string $id;
 
   /**
    * Constructs a new DateRecurInterpreterPluginCollection.

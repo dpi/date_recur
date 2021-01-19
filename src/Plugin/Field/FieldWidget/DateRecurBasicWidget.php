@@ -52,10 +52,12 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
       // cardinality widgets.
       '#weight' => 0,
     ];
-    $firstOccurrenceParents = array_merge(
-      $element['#field_parents'],
-      [$this->fieldDefinition->getName(), $delta, 'first_occurrence']
-    );
+    $firstOccurrenceParents = [
+      ...$element['#field_parents'],
+      $this->fieldDefinition->getName(),
+      $delta,
+      'first_occurrence',
+    ];
     $element['value']['#title'] = $this->t('Start');
     $element['end_value']['#title'] = $this->t('End');
     $element['end_value']['#description'] = $this->t('Leave end empty to copy start date; the occurrence will therefore not have any duration.');

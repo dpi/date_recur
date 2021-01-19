@@ -24,7 +24,7 @@ class DateRecurBasicWidgetTest extends BrowserTestBase {
   /**
    * {@inheritdoc}
    */
-  protected $defaultTheme = 'classy';
+  protected string $defaultTheme = 'classy';
 
   /**
    * {@inheritdoc}
