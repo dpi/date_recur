@@ -44,28 +44,28 @@ class DateRecurOccurrences implements EventSubscriberInterface, EntityTypeListen
    *
    * @var \Drupal\Core\Database\Connection
    */
-  protected $database;
+  protected Connection $database;
 
   /**
    * The entity type manager.
    *
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityTypeManager;
+  protected EntityTypeManagerInterface $entityTypeManager;
 
   /**
    * The entity field manager.
    *
    * @var \Drupal\Core\Entity\EntityFieldManagerInterface
    */
-  protected $entityFieldManager;
+  protected EntityFieldManagerInterface $entityFieldManager;
 
   /**
    * Manages data type plugins.
    *
    * @var \Drupal\Core\TypedData\TypedDataManagerInterface
    */
-  protected $typedDataManager;
+  protected TypedDataManagerInterface $typedDataManager;
 
   /**
    * DateRecurOccurrences constructor.
@@ -421,14 +421,12 @@ class DateRecurOccurrences implements EventSubscriberInterface, EntityTypeListen
    */
   protected function getBaseFieldStorages(ContentEntityTypeInterface $entityType): array {
     $baseFields = $this->entityFieldManager->getBaseFieldDefinitions($entityType->id());
-    $baseFields = array_filter($baseFields, function (FieldDefinitionInterface $fieldDefinition): bool {
-      return $this->isDateRecur($fieldDefinition->getFieldStorageDefinition());
-    });
+    $baseFields = array_filter($baseFields,
+      fn (FieldDefinitionInterface $fieldDefinition): bool => $this->isDateRecur($fieldDefinition->getFieldStorageDefinition())
+    );
 
     return array_map(
-      function (FieldDefinitionInterface $baseField): FieldStorageDefinitionInterface {
-        return $baseField->getFieldStorageDefinition();
-      },
+      fn (FieldDefinitionInterface $baseField): FieldStorageDefinitionInterface => $baseField->getFieldStorageDefinition(),
       $baseFields
     );
   }

@@ -38,28 +38,30 @@ class DateRecurViewsFieldTest extends ViewsKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $testViews = ['dr_entity_test_list'];
+  public static $testViews = [
+    'dr_entity_test_list',
+  ];
 
   /**
    * Field mapping for testing.
    *
    * @var array
    */
-  protected $map;
+  protected array $map;
 
   /**
    * The entity type for testing.
    *
    * @var string
    */
-  protected $entityType;
+  protected string $entityType;
 
   /**
    * Name of field for testing.
    *
    * @var string
    */
-  protected $fieldName;
+  protected string $fieldName;
 
   /**
    * {@inheritdoc}

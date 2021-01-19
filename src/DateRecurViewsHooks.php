@@ -34,35 +34,35 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
    *
    * @var \Drupal\Core\Database\Connection
    */
-  protected $database;
+  protected Connection $database;
 
   /**
    * Module handler.
    *
    * @var \Drupal\Core\Extension\ModuleHandlerInterface
    */
-  protected $moduleHandler;
+  protected ModuleHandlerInterface $moduleHandler;
 
   /**
    * Entity type manager.
    *
    * @var \Drupal\Core\Entity\EntityTypeManagerInterface
    */
-  protected $entityTypeManager;
+  protected EntityTypeManagerInterface $entityTypeManager;
 
   /**
    * The entity field manager.
    *
    * @var \Drupal\Core\Entity\EntityFieldManagerInterface
    */
-  protected $entityFieldManager;
+  protected EntityFieldManagerInterface $entityFieldManager;
 
   /**
    * The typed data manager.
    *
    * @var \Drupal\Core\TypedData\TypedDataManagerInterface
    */
-  protected $typedDataManager;
+  protected TypedDataManagerInterface $typedDataManager;
 
   /**
    * DateRecurViewsHooks constructor.
