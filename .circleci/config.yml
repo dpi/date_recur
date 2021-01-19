@@ -5,7 +5,7 @@ jobs:
       - image: circleci/php:7.4-cli
     steps:
       - run: composer global require hirak/prestissimo
-      - run: composer create-project drupal-composer/drupal-project:8.x-dev drupal --no-interaction --ignore-platform-reqs
+      - run: composer create-project drupal-composer/drupal-project:8.x-dev drupal --ignore-platform-reqs
       - checkout:
           path: drupal/web/modules/contrib/date_recur
       - run: cd drupal/web/modules/contrib/date_recur && composer install --ignore-platform-reqs
@@ -39,7 +39,7 @@ jobs:
       - run: sudo apt update
       - run: sudo apt install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev
       - run: sudo docker-php-ext-install gd
-      - run: cd drupal/web/modules/contrib/date_recur && ./vendor/bin/phpstan analyse --no-progress -c phpstan.neon --level=max > ~/phpstan-report.txt
+      - run: cd drupal/web/modules/contrib/date_recur && ./vendor/bin/phpstan analyse -c phpstan.neon --level=max > ~/phpstan-report.txt
       - store_artifacts:
           path: ~/phpstan-report.txt
 
