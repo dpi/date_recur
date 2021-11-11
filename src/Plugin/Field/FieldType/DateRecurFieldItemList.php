@@ -34,7 +34,7 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
   public function postSave($update): bool {
     parent::postSave($update);
     $event = new DateRecurValueEvent($this, !$update);
-    $this->getDispatcher()->dispatch(DateRecurEvents::FIELD_VALUE_SAVE, $event);
+    $this->getDispatcher()->dispatch($event, DateRecurEvents::FIELD_VALUE_SAVE);
     return FALSE;
   }
 
@@ -44,7 +44,7 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
   public function delete(): void {
     parent::delete();
     $event = new DateRecurValueEvent($this, FALSE);
-    $this->getDispatcher()->dispatch(DateRecurEvents::FIELD_ENTITY_DELETE, $event);
+    $this->getDispatcher()->dispatch($event, DateRecurEvents::FIELD_ENTITY_DELETE);
   }
 
   /**
@@ -53,7 +53,7 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
   public function deleteRevision(): void {
     parent::deleteRevision();
     $event = new DateRecurValueEvent($this, FALSE);
-    $this->getDispatcher()->dispatch(DateRecurEvents::FIELD_REVISION_DELETE, $event);
+    $this->getDispatcher()->dispatch($event, DateRecurEvents::FIELD_REVISION_DELETE);
   }
 
   /**
