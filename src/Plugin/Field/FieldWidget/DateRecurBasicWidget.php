@@ -65,7 +65,10 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
     $element['value']['#group'] = $element['end_value']['#group'] = implode('][', $firstOccurrenceParents);
 
     // Add custom value callbacks to correctly form a date from time zone field.
-    $element['value']['#value_callback'] = $element['end_value']['#value_callback'] = [$this, 'dateValueCallback'];
+    $element['value']['#value_callback'] = $element['end_value']['#value_callback'] = [
+      $this,
+      'dateValueCallback',
+    ];
 
     // Saved values (should) always have a time zone.
     $timeZone = $items[$delta]->timezone ?? NULL;

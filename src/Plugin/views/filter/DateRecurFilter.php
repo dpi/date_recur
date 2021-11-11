@@ -218,7 +218,10 @@ class DateRecurFilter extends FilterPluginBase {
    */
   public function submitOptionsForm(&$form, FormStateInterface $form_state): void {
     parent::submitOptionsForm($form, $form_state);
-    $this->options['value_granularity'] = $form_state->getValue(['options', 'value_granularity']);
+    $this->options['value_granularity'] = $form_state->getValue([
+      'options',
+      'value_granularity',
+    ]);
 
     $utc = new \DateTimeZone('UTC');
     /** @var \Drupal\Core\Datetime\DrupalDateTime $min|null */
