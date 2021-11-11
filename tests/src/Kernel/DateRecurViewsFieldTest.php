@@ -24,7 +24,7 @@ class DateRecurViewsFieldTest extends ViewsKernelTestBase {
   /**
    * {@inheritdoc}
    */
-  public static $modules = [
+  protected static $modules = [
     'date_recur_entity_test',
     'date_recur_views_test',
     'entity_test',
