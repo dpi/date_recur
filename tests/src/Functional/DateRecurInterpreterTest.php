@@ -42,7 +42,7 @@ class DateRecurInterpreterTest extends WebDriverTestBase {
     $instanceLabel = 'Kaya';
     $url = Url::fromRoute('entity.date_recur_interpreter.add_form');
     $this->drupalGet($url);
-    $buttonLabel = \t('Next');
+    $buttonLabel = $this->t('Next');
     $this->assertSession()->buttonExists($buttonLabel);
     $this->assertSession()->pageTextContains('Add interpreter');
     $this->assertSession()->optionExists('plugin_type', 'test_interpreter');
@@ -54,7 +54,7 @@ class DateRecurInterpreterTest extends WebDriverTestBase {
 
     // Page should have reloaded, a different submit button visible.
     $this->assertSession()->buttonNotExists($buttonLabel);
-    $buttonLabel = \t('Save');
+    $buttonLabel = $this->t('Save');
     $this->assertSession()->pageTextContains('Add interpreter');
     $this->assertSession()->checkboxNotChecked('configure[show_foo]');
     $page = $this->getSession()->getPage();
