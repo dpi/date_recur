@@ -211,7 +211,7 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
       $tableMapping = $entityStorage->getTableMapping($fields);
 
       /** @var \Drupal\Core\Field\FieldStorageDefinitionInterface[] $fields */
-      foreach ($fields as $fieldId => $fieldStorage) {
+      foreach ($fields as $fieldStorage) {
         if (!$fieldStorage instanceof BaseFieldDefinition) {
           continue;
         }
