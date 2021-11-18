@@ -24,10 +24,11 @@
   "require-dev": {
     "drupal/coder": "^8.3",
     "drupal/token": "^1.5",
-    "phpstan/phpstan": "^0.12",
-    "mglaman/phpstan-drupal": "^0.12",
+    "phpstan/phpstan": "^1",
+    "mglaman/phpstan-drupal": "^1",
     "phpstan/phpstan-deprecation-rules": "*",
-    "dealerdirect/phpcodesniffer-composer-installer": "dev-master"
+    "dealerdirect/phpcodesniffer-composer-installer": "dev-master",
+    "phpspec/prophecy-phpunit": "^2"
   },
   "suggest": {
     "drupal/date_recur_interactive": "Provides an interactive recurring date widget."
