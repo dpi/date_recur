@@ -27,8 +27,7 @@
     "phpstan/phpstan": "^1",
     "mglaman/phpstan-drupal": "^1",
     "phpstan/phpstan-deprecation-rules": "*",
-    "dealerdirect/phpcodesniffer-composer-installer": "dev-master",
-    "phpspec/prophecy-phpunit": "^2"
+    "dealerdirect/phpcodesniffer-composer-installer": "dev-master"
   },
   "suggest": {
     "drupal/date_recur_interactive": "Provides an interactive recurring date widget."
