@@ -21,6 +21,7 @@ jobs:
           path: drupal/
       - restore_cache:
           key: my-key-{{ .Revision }}
+      - run: ls && cd drupal && ls
       - run: cd drupal/web/modules/contrib/date_recur && ./vendor/bin/phpcs . > ~/phpcs-report.txt
       - store_artifacts:
           path: ~/phpcs-report.txt
