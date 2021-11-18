@@ -21,9 +21,9 @@ jobs:
     docker:
       - image: circleci/php:7.4-cli
     steps:
-      - restore_cache:
-          key: my-key-{{ .Revision }}
-      - run: ./vendor/bin/phpcs --standard drupal/web/modules/contrib/date_recur/phpcs.xml drupal/web/modules/contrib/date_recur > ~/phpcs-report.txt
+      - checkout
+      - run: composer install --prefer-dist
+      - run: ./vendor/bin/phpcs . > ~/phpcs-report.txt
       - run: cat ~/phpcs-report.txt
       - store_artifacts:
           path: ~/phpcs-report.txt
@@ -36,7 +36,9 @@ jobs:
       - run: php -i | grep memory_limit
       - restore_cache:
           key: my-key-{{ .Revision }}
-      - run: ./vendor/bin/phpstan analyse --no-progress -c drupal/web/modules/contrib/date_recur/phpstan.neon --level=max > ~/phpstan-report.txt
+      - checkout
+      - run: composer install --prefer-dist
+      - run: ./vendor/bin/phpstan analyse --no-progress -c phpstan.neon --level=max > ~/phpstan-report.txt
       - store_artifacts:
           path: ~/phpstan-report.txt
 
