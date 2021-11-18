@@ -3,7 +3,7 @@ parameters:
   customRulesetUsed: true
   paths:
     - .
-  excludesAnalyse:
+  excludes_analyse:
     - *Test.php
     - *TestBase.php
     - *ServiceProvider.php

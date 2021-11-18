@@ -23,9 +23,7 @@ jobs:
     steps:
       - restore_cache:
           key: my-key-{{ .Revision }}
-      - run: ls
-      - run: cd drupal && ls
-      - run: cd drupal/web/modules/contrib/date_recur && ./vendor/bin/phpcs . > ~/phpcs-report.txt
+      - run: ./vendor/bin/phpcs --standard drupal/web/modules/contrib/date_recur/phpcs.xml drupal/web/modules/contrib/date_recur > ~/phpcs-report.txt
       - run: cat ~/phpcs-report.txt
       - store_artifacts:
           path: ~/phpcs-report.txt
@@ -38,10 +36,7 @@ jobs:
       - run: php -i | grep memory_limit
       - restore_cache:
           key: my-key-{{ .Revision }}
-      - run: sudo apt update
-      - run: sudo apt install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev
-      - run: sudo docker-php-ext-install gd
-      - run: cd drupal/web/modules/contrib/date_recur && ./vendor/bin/phpstan analyse --no-progress -c phpstan.neon --level=max > ~/phpstan-report.txt
+      - run: ./vendor/bin/phpstan analyse --no-progress -c drupal/web/modules/contrib/date_recur/phpstan.neon --level=max > ~/phpstan-report.txt
       - store_artifacts:
           path: ~/phpstan-report.txt
 
