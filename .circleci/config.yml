@@ -4,8 +4,7 @@ jobs:
     docker:
       - image: circleci/php:7.4-cli
     steps:
-      - run: composer global require hirak/prestissimo
-      - run: composer create-project drupal-composer/drupal-project:8.x-dev drupal --no-interaction --ignore-platform-reqs
+      - run: composer create-project drupal-composer/drupal-project:9.x-dev drupal --no-interaction --ignore-platform-reqs
       - checkout:
           path: drupal/web/modules/contrib/date_recur
       - run: cd drupal/web/modules/contrib/date_recur && composer install --ignore-platform-reqs
