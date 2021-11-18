@@ -109,7 +109,7 @@ class DateRecurFilter extends FilterPluginBase {
    * Fixes when exposed filter turned on changes value to array. Seems like
    * property name is opposite of intention?
    */
-  protected bool $alwaysMultiple = TRUE;
+  protected $alwaysMultiple = TRUE;
 
   /**
    * {@inheritdoc}
