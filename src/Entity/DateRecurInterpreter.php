@@ -49,9 +49,9 @@ class DateRecurInterpreter extends ConfigEntityBase implements DateRecurInterpre
   /**
    * The machine name.
    *
-   * @var string
+   * @var string|null
    */
-  protected string $id;
+  protected ?string $id = NULL;
 
   /**
    * The custom label.
