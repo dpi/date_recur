@@ -23,21 +23,21 @@ class DateRecurOccurrenceTableTest extends KernelTestBase {
    *
    * @var string
    */
-  protected string $testEntityType;
+  private string $testEntityType;
 
   /**
    * Name of field for testing.
    *
    * @var string
    */
-  protected string $fieldName;
+  private string $fieldName;
 
   /**
    * The field definition for testing.
    *
    * @var \Drupal\Core\Field\FieldStorageDefinitionInterface
    */
-  protected FieldStorageDefinitionInterface $fieldDefinition;
+  private FieldStorageDefinitionInterface $fieldDefinition;
 
   /**
    * {@inheritdoc}

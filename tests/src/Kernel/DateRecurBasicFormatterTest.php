@@ -38,14 +38,14 @@ class DateRecurBasicFormatterTest extends KernelTestBase {
    *
    * @var \Drupal\Core\Datetime\DateFormatInterface
    */
-  protected DateFormatInterface $dateFormat;
+  private DateFormatInterface $dateFormat;
 
   /**
    * An interpreter for testing.
    *
    * @var \Drupal\date_recur\Entity\DateRecurInterpreterInterface
    */
-  protected DateRecurInterpreterInterface $interpreter;
+  private DateRecurInterpreterInterface $interpreter;
 
   /**
    * {@inheritdoc}

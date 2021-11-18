@@ -35,7 +35,7 @@ class DateRecurPartGridTest extends KernelTestBase {
    *
    * @var \Drupal\Core\Field\FieldConfigInterface
    */
-  protected FieldConfigInterface $fieldConfig;
+  private FieldConfigInterface $fieldConfig;
 
   /**
    * {@inheritdoc}

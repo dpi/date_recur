@@ -42,7 +42,7 @@ class DateRecurFieldItemDefaultValuesTest extends KernelTestBase {
    *
    * @var \Drupal\Core\Field\Entity\BaseFieldOverride
    */
-  protected BaseFieldOverride $baseFieldOverride;
+  private BaseFieldOverride $baseFieldOverride;
 
   /**
    * {@inheritdoc}
