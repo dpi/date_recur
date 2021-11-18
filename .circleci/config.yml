@@ -4,6 +4,7 @@ jobs:
     docker:
       - image: circleci/php:7.4-cli
     steps:
+      - run: sudo apt update
       - run: sudo apt install -y libpng16-dev libjpeg-dev
       - run: sudo docker-php-ext-install gd
       - run: composer create-project drupal-composer/drupal-project:9.x-dev drupal --no-interaction --ignore-platform-reqs
