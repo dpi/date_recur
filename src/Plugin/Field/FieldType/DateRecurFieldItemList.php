@@ -116,13 +116,16 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
    * {@inheritdoc}
    */
   public function defaultValuesFormValidate(array $element, array &$form, FormStateInterface $form_state): void {
+    // @codingStandardsIgnoreLine
     $defaultDateTimeZone = $form_state->getValue(['default_value_input', 'default_date_time_zone']);
     if (empty($defaultDateTimeZone)) {
+      // @codingStandardsIgnoreLine
       $defaultStartType = $form_state->getValue(['default_value_input', 'default_date_type']);
       if (!empty($defaultStartType)) {
         $form_state->setErrorByName('default_value_input][default_date_time_zone', (string) $this->t('Time zone must be provided if a default start date is provided.'));
       }
 
+      // @codingStandardsIgnoreLine
       $defaultEndType = $form_state->getValue(['default_value_input', 'default_end_date_type']);
       if (!empty($defaultEndType)) {
         $form_state->setErrorByName('default_value_input][default_date_time_zone', (string) $this->t('Time zone must be provided if a default end date is provided.'));
@@ -138,16 +141,19 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
   public function defaultValuesFormSubmit(array $element, array &$form, FormStateInterface $form_state): array {
     $values = parent::defaultValuesFormSubmit($element, $form, $form_state);
 
+    // @codingStandardsIgnoreLine
     $rrule = $form_state->getValue(['default_value_input', 'default_rrule']);
     if ($rrule) {
       $values[0]['default_rrule'] = $rrule;
     }
 
+    // @codingStandardsIgnoreLine
     $defaultDateTimeZone = $form_state->getValue(['default_value_input', 'default_date_time_zone']);
     if ($defaultDateTimeZone) {
       $values[0]['default_date_time_zone'] = $defaultDateTimeZone;
     }
 
+    // @codingStandardsIgnoreLine
     $defaultTimeZone = $form_state->getValue(['default_value_input', 'default_time_zone']);
     if ($defaultTimeZone) {
       $values[0]['default_time_zone'] = $defaultTimeZone;
