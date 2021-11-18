@@ -9,7 +9,7 @@ jobs:
           path: drupal/web/modules/contrib/date_recur
       - run: cd drupal/web/modules/contrib/date_recur && composer install --ignore-platform-reqs
       - save_cache:
-          key: {{ .Revision }}
+          key: my-key-{{ .Revision }}
           paths:
             - drupal/
 
@@ -17,8 +17,10 @@ jobs:
     docker:
       - image: circleci/php:7.4-cli
     steps:
+      - checkout:
+          path: drupal/
       - restore_cache:
-          key: {{ .Revision }}
+          key: my-key-{{ .Revision }}
       - run: cd drupal/web/modules/contrib/date_recur && ./vendor/bin/phpcs . > ~/phpcs-report.txt
       - store_artifacts:
           path: ~/phpcs-report.txt
@@ -29,8 +31,10 @@ jobs:
     steps:
       - run: echo 'memory_limit=-1' | sudo tee -a /usr/local/etc/php/php.ini
       - run: php -i | grep memory_limit
+      - checkout:
+          path: drupal/
       - restore_cache:
-          key: {{ .Revision }}
+          key: my-key-{{ .Revision }}
       - run: sudo apt update
       - run: sudo apt install -y libfreetype6-dev libjpeg62-turbo-dev libpng-dev
       - run: sudo docker-php-ext-install gd
