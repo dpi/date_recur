@@ -10,7 +10,7 @@ jobs:
       - run: composer create-project drupal-composer/drupal-project:9.x-dev drupal --no-interaction --ignore-platform-reqs
       - checkout:
           path: date_recur_source
-      - run: cd drupal && composer config repositories.daterecur "{\"type\": \"path\", \"url\": \"../date_recur_source\", \"options\": {\"symlink\": false}}"
+      - run: cd drupal && composer config repositories.daterecur "{\"type\":\"path\", \"url\":\"\.\.\/date_recur_source\", \"options\":{\"symlink\":false}}"
       - run: cd drupal && composer require drupal/date_recur
       - save_cache:
           key: my-key-{{ .Revision }}
