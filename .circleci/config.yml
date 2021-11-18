@@ -8,6 +8,7 @@ jobs:
       - checkout:
           path: date_recur_source
       - run: cd drupal && composer config repositories.daterecur path ../date_recur_source
+      - run: cd drupal && composer require drupal/date_recur
       - save_cache:
           key: my-key-{{ .Revision }}
           paths:

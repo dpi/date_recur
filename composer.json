@@ -10,12 +10,13 @@
     "issues": "https://www.drupal.org/project/issues/date_recur",
     "source": "http://cgit.drupalcode.org/date_recur"
   },
-  "repositories": [
-      {
-          "type": "composer",
-          "url": "https://packages.drupal.org/8"
-      }
-  ],
+    "repositories": {
+        "drupalorg": {
+            "type": "composer",
+            "url": "https://packages.drupal.org/8",
+            "canonical": false
+        }
+    },
   "require": {
     "php": ">=7.4",
     "drupal/core": "^9",
