@@ -17,8 +17,6 @@ jobs:
     docker:
       - image: circleci/php:7.4-cli
     steps:
-      - checkout:
-          path: tmp/
       - restore_cache:
           key: my-key-{{ checksum "tmp/composer.lock" }}-{{ .Revision }}
       - run: cd drupal/web/modules/contrib/date_recur && ./vendor/bin/phpcs . > ~/phpcs-report.txt
@@ -31,8 +29,6 @@ jobs:
     steps:
       - run: echo 'memory_limit=-1' | sudo tee -a /usr/local/etc/php/php.ini
       - run: php -i | grep memory_limit
-      - checkout:
-          path: tmp/
       - restore_cache:
           key: my-key-{{ checksum "tmp/composer.lock" }}-{{ .Revision }}
       - run: sudo apt update
