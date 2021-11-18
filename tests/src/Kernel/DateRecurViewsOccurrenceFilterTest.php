@@ -45,14 +45,14 @@ class DateRecurViewsOccurrenceFilterTest extends ViewsKernelTestBase {
    *
    * @var array
    */
-  protected array $map = [];
+  private array $map = [];
 
   /**
    * Name of field for testing.
    *
    * @var string
    */
-  protected string $fieldName;
+  private string $fieldName;
 
   /**
    * {@inheritdoc}
