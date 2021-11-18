@@ -6,8 +6,8 @@ jobs:
     steps:
       - run: composer create-project drupal-composer/drupal-project:9.x-dev drupal --no-interaction --ignore-platform-reqs
       - checkout:
-          path: drupal/web/modules/contrib/date_recur
-      - run: cd drupal/web/modules/contrib/date_recur && composer install --ignore-platform-reqs
+          path: date_recur_source
+      - run: cd drupal && composer config repositories.daterecur path ../date_recur_source
       - save_cache:
           key: my-key-{{ .Revision }}
           paths:
@@ -22,6 +22,7 @@ jobs:
       - run: ls
       - run: cd drupal && ls
       - run: cd drupal/web/modules/contrib/date_recur && ./vendor/bin/phpcs . > ~/phpcs-report.txt
+      - run: cat ~/phpcs-report.txt
       - store_artifacts:
           path: ~/phpcs-report.txt
 
