@@ -58,7 +58,7 @@ class DateRecurInterpreter extends ConfigEntityBase implements DateRecurInterpre
    *
    * @var string
    */
-  protected string $label;
+  protected ?string $label = NULL;
 
   /**
    * The plugin ID.
