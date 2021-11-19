@@ -21,7 +21,7 @@ class DateRecurInterpreterPluginCollection extends DefaultSingleLazyPluginCollec
    *   The ID of the plugin instance.
    * @param array $configuration
    *   An array of configuration.
-   * @param string $id
+   * @param string|null $id
    *   The ID of the date recur interpreter entity using this plugin.
    */
   public function __construct(PluginManagerInterface $manager,

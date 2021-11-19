@@ -9,7 +9,7 @@ jobs:
       - run: sudo docker-php-ext-install gd
       - run: composer create-project drupal-composer/drupal-project:9.x-dev drupal --no-interaction --ignore-platform-reqs
       # Add all of our dev dependencies.
-      - run: cd drupal && composer require drupal/coder:^8.3 drupal/token:^1.5 phpstan/phpstan:^1 mglaman/phpstan-drupal:^1 phpstan/phpstan-deprecation-rules dealerdirect/phpcodesniffer-composer-installer:dev-master
+      - run: cd drupal && composer require drupal/coder:^8.3 drupal/token:^1.5 phpstan/phpstan:^1 mglaman/phpstan-drupal:^1 phpstan/phpstan-deprecation-rules dealerdirect/phpcodesniffer-composer-installer:^0.7.3
       # Also the extra core dev dep.
       - run: cd drupal && composer require --dev phpspec/prophecy-phpunit:^2
       - checkout:
