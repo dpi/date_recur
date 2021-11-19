@@ -5,7 +5,7 @@ declare(strict_types = 1);
 namespace Drupal\date_recur\Event;
 
 use Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList;
-use Symfony\Component\EventDispatcher\Event;
+use Drupal\Component\EventDispatcher\Event;
 
 /**
  * Event dispatched when an entity containing a date recur field is modified.

@@ -76,7 +76,7 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
     $zones = $this->getTimeZoneOptions();
     $element['timezone'] = [
       '#type' => 'select',
-      '#title' => t('Time zone'),
+      '#title' => $this->t('Time zone'),
       '#default_value' => $timeZone,
       '#options' => $zones,
     ];
