@@ -75,7 +75,7 @@ class DateRecurItem extends DateRangeItem {
    *
    * @var \Drupal\date_recur\DateRecurHelperInterface|null
    */
-  protected $helper;
+  protected ?DateRecurHelperInterface $helper;
 
   /**
    * {@inheritdoc}
@@ -214,7 +214,7 @@ class DateRecurItem extends DateRangeItem {
       '#title' => $this->t('Allow all frequency and parts'),
       '#default_value' => $allPartsSettings['all'] ?? TRUE,
     ];
-    $parents = array_merge($elementParts, ['parts', 'all']);
+    $parents = [...$elementParts, 'parts', 'all'];
     // The form 'name' attribute of the 'all' parts checkbox above.
     $allPartsCheckboxName = $parents[0] . '[' . implode('][', array_slice($parents, 1)) . ']';
 
@@ -248,12 +248,13 @@ class DateRecurItem extends DateRangeItem {
       $row = [];
       $row['frequency']['#markup'] = $frequencyLabels[$frequency];
 
-      $parents = array_merge($elementParts, [
+      $parents = [
+        ...$elementParts,
         'parts',
         'table',
         $frequency,
         'setting',
-      ]);
+      ];
       // Constructs a name that looks like
       // settings[parts][table][MINUTELY][setting].
       $settingsCheckboxName = $parents[0] . '[' . implode('][', array_slice($parents, 1)) . ']';

@@ -17,14 +17,14 @@ class DateRecurValueEvent extends Event {
    *
    * @var \Drupal\date_recur\Plugin\Field\FieldType\DateRecurFieldItemList
    */
-  protected $field;
+  protected DateRecurFieldItemList $field;
 
   /**
    * Whether the entity was created.
    *
    * @var bool
    */
-  protected $insert;
+  protected bool $insert;
 
   /**
    * DateRecurValueEvent constructor.
