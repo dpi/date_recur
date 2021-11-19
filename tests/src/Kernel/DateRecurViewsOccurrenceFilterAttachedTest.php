@@ -25,7 +25,7 @@ class DateRecurViewsOccurrenceFilterAttachedTest extends DateRecurViewsOccurrenc
   /**
    * {@inheritdoc}
    */
-  protected function setUp($import_test_views = TRUE) : void {
+  protected function setUp($import_test_views = TRUE): void {
     parent::setUp(FALSE);
 
     // This is the name of the attached field.
