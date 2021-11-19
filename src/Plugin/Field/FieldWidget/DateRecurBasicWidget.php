@@ -194,10 +194,10 @@ class DateRecurBasicWidget extends DateRangeDefaultWidget {
         DateRecurHelper::create(
           $rrule,
           $startDate->getPhpDateTime(),
-          $startDateEnd ? $startDateEnd->getPhpDateTime() : NULL
+          $startDateEnd?->getPhpDateTime(),
         );
       }
-      catch (\Exception $e) {
+      catch (\Exception) {
         $form_state->setError($element['rrule'], (string) $this->t('Repeat rule is formatted incorrectly.'));
       }
     }
