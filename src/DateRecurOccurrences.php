@@ -265,6 +265,10 @@ class DateRecurOccurrences implements EventSubscriberInterface, EntityTypeListen
    */
   protected function fieldStorageDelete(FieldStorageDefinitionInterface $fieldDefinition): void {
     $tableName = static::getOccurrenceCacheStorageTableName($fieldDefinition);
+    if ($this->database->schema()->tableExists($tableName)) {
+      return;
+    }
+
     $this->database
       ->schema()
       ->dropTable($tableName);
