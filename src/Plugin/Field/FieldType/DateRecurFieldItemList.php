@@ -122,19 +122,13 @@ class DateRecurFieldItemList extends DateRangeFieldItemList {
       // @codingStandardsIgnoreLine
       $defaultStartType = $form_state->getValue(['default_value_input', 'default_date_type']);
       if (!empty($defaultStartType)) {
-        $form_state->setErrorByName(
-          'default_value_input][default_date_time_zone',
-          (string) $this->t('Time zone must be provided if a default start date is provided.')
-        );
+        $form_state->setErrorByName('default_value_input][default_date_time_zone', (string) $this->t('Time zone must be provided if a default start date is provided.'));
       }
 
       // @codingStandardsIgnoreLine
       $defaultEndType = $form_state->getValue(['default_value_input', 'default_end_date_type']);
       if (!empty($defaultEndType)) {
-        $form_state->setErrorByName(
-          'default_value_input][default_date_time_zone',
-          (string) $this->t('Time zone must be provided if a default end date is provided.')
-        );
+        $form_state->setErrorByName('default_value_input][default_date_time_zone', (string) $this->t('Time zone must be provided if a default end date is provided.'));
       }
     }
 
