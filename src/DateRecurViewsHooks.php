@@ -21,6 +21,7 @@ use Drupal\Core\Entity\Sql\SqlEntityStorageInterface;
 use Drupal\Core\Field\BaseFieldDefinition;
 use Drupal\Core\Field\FieldStorageDefinitionInterface;
 use Drupal\Core\StringTranslation\TranslatableMarkup;
+use Drupal\Component\Plugin\Exception\PluginNotFoundException;
 
 /**
  * Defines Views hooks.
@@ -319,18 +320,25 @@ class DateRecurViewsHooks implements ContainerInjectionInterface {
       // \Drupal\views\EntityViewsData class only allows entities with
       // \Drupal\Core\Entity\Sql\SqlEntityStorageInterface.
       // Only fieldable entities have base fields.
-      if (
-        $this->entityTypeManager->getStorage($entityType->id()) instanceof SqlEntityStorageInterface &&
-        $entityType->hasHandlerClass('views_data') &&
-        $entityType->entityClassImplements(FieldableEntityInterface::class)) {
-        $fields[$entityType->id()] = array_filter(
-          $this->entityFieldManager->getFieldStorageDefinitions($entityType->id()),
-          function (FieldStorageDefinitionInterface $field): bool {
-            $typeDefinition = $this->typedDataManager->getDefinition('field_item:' . $field->getType());
-            // @see \Drupal\date_recur\DateRecurCachedHooks::fieldInfoAlter
-            return isset($typeDefinition[DateRecurOccurrences::IS_DATE_RECUR]);
-          }
-        );
+      try {
+        if (
+          $this->entityTypeManager->getStorage($entityType->id()) instanceof SqlEntityStorageInterface &&
+          $entityType->hasHandlerClass('views_data') &&
+          $entityType->entityClassImplements(FieldableEntityInterface::class)) {
+          $fields[$entityType->id()] = array_filter(
+            $this->entityFieldManager->getFieldStorageDefinitions($entityType->id()),
+            function (FieldStorageDefinitionInterface $field): bool {
+              $typeDefinition = $this->typedDataManager->getDefinition('field_item:' . $field->getType());
+              // @see \Drupal\date_recur\DateRecurCachedHooks::fieldInfoAlter
+              return isset($typeDefinition[DateRecurOccurrences::IS_DATE_RECUR]);
+            }
+          );
+        }
+      }
+      catch (PluginNotFoundException $e) {
+        // This can occur when a content-entity is added during a config 
+        // import that enables a module.
+        continue;
       }
     }
 
